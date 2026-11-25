@@ -7,7 +7,7 @@ const st=document.createElement('style');st.textContent="#tb{position:fixed;righ
 const tb=document.createElement('button');tb.id='tb';tb.textContent='\uD83E\uDDEE Tools';const tpd=document.createElement('div');tpd.id='tp';document.body.append(tb,tpd);
 const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const TP=document.getElementById('tp'),TB=document.getElementById('tb');
-let tab='calc',deg=true,expr='',res='',ansv=0,lastVal=null,showFrac=false,padImg='',undo=[],pen={c:'#111',w:3,erase:false},hist=[];
+if(!window.renderCasioCalc&&!document.getElementById('casio-js')){const cs=document.createElement('script');cs.id='casio-js';cs.src='casio-calculator.js';cs.onload=()=>{if(TP.classList.contains('on')&&tab==='calc')tools()};document.head.appendChild(cs);}let tab='calc',deg=true,expr='',res='',ansv=0,lastVal=null,showFrac=false,padImg='',undo=[],pen={c:'#111',w:3,erase:false},hist=[];
 try{hist=JSON.parse(localStorage.getItem('eqh')||'[]')}catch(e){}
 const hsave=()=>{try{localStorage.setItem('eqh',JSON.stringify(hist))}catch(e){}};
 function fracStr(x){if(!isFinite(x))return null;const ng=x<0;let v=Math.abs(x);if(Number.isInteger(parseFloat(v.toPrecision(12))))return String((ng?-1:1)*Math.round(v));let h1=1,h2=0,k1=0,k2=1,b=v;for(let n=0;n<30;n++){const a=Math.floor(b),h=a*h1+h2,k=a*k1+k2;h2=h1;h1=h;k2=k1;k1=k;if(k>10000)return null;if(Math.abs(v-h/k)<1e-9*Math.max(1,v)){const s=ng?'-':'',w=Math.floor(h/k),r=h%k;return s+h+'/'+k+(w>0&&r>0?' ('+s+w+' '+r+'/'+k+')':'')}if(b-a<1e-12)return null;b=1/(b-a)}return null}
@@ -66,16 +66,13 @@ function tools(){
  const oc=document.getElementById('cv');if(oc)padImg=oc.toDataURL();
  const T=[['calc','Calc'],['hi','History'],['fs','Formulas'],['dr','Draw']];
  let h=`<div class='tabs'>${T.map(a=>`<button data-t='${a[0]}' class='${tab===a[0]?'on':''}'>${a[1]}</button>`).join('')}</div>`;
- if(tab==='calc'){
-  const K=[['DEG','mode','op'],['x²','^2','op'],['log','log(','op'],['ln','ln(','op'],['EE','*10^(','op'],['sin','sin(','op'],['cos','cos(','op'],['tan','tan(','op'],['(','(','op'],[')',')','op'],['sin⁻¹','asin(','op'],['cos⁻¹','acos(','op'],['tan⁻¹','atan(','op'],['√','√(','op'],['^','^','op'],['7','7'],['8','8'],['9','9'],['÷','÷','op'],['⌫','bs','op'],['4','4'],['5','5'],['6','6'],['×','×','op'],['C','clr','op'],['1','1'],['2','2'],['3','3'],['−','-','op'],['Ans','ans','op'],['0','0'],['.','.'],['π','π','op'],['+','+','op'],['=','eq','eq'],['F⇄D','frac','op'],['x⁻¹','^(-1)','op'],['e','e','op'],['abs','abs(','op'],['10ˣ','10^(','op']];
-  h+=`<input id='dsp' class='disp' inputmode='none' autocomplete='off' spellcheck='false' placeholder='0'><div class='res' id='res'>${esc(res)}</div><div class='keys'>${K.map(k=>`<button data-a='${k[1]}' class='${k[2]||''}'>${k[0]==='DEG'?(deg?'DEG':'RAD'):esc(k[0])}</button>`).join('')}</div>`;
- }else if(tab==='fs'){
+if(tab==='calc'){h+="<div id='casio-mount'></div>";}else if(tab==='fs'){
   h+=`<div class='fs'>${FS.map((s,k)=>`<img src='${s}' data-zi='${k}' alt='Formula sheet page ${k+1}'>`).join('')}<p class='hint'>Tap a page to zoom in.</p></div>`;
  }else if(tab==='hi'){
   h+=hist.length?`<div class='hist'>${hist.map((x,j)=>`<button data-h='${j}'><span>${esc(x.e)}</span><b>= ${esc(x.r)}</b></button>`).join('')}</div><div class='act'><button id='hclr'>Clear history</button></div>`:`<p class='hint'>Nothing yet. Your answers show up here after you press =.</p>`;
  }else{
   h+=`<div class='dt'><button data-d='pen' class='${pen.erase?'':'on'}'>Pen</button><button data-d='er' class='${pen.erase?'on':''}'>Eraser</button>${['#111','#1c4fd8','#d62828'].map(c=>`<button data-d='${c}' class='${!pen.erase&&pen.c===c?'sel':''}' style='background:${c}'></button>`).join('')}<input type='range' id='pw' min='1' max='10' value='${pen.w}'><button data-d='undo'>Undo</button><button data-d='clr'>Clear</button></div><canvas id='cv' width='992' height='800'></canvas>`}
- TP.innerHTML=h;
+ TP.innerHTML=h;if(tab==='calc'){const cm=document.getElementById('casio-mount');if(cm){if(window.renderCasioCalc)window.renderCasioCalc(cm,{hist,hsave,fracStr,fm,initialExpr:expr,initialRes:res,onUpdate:(e,r)=>{expr=e;res=r}});else cm.innerHTML='<p class="hint">Loading Casio fx-300ES PLUS...</p>';}}
  TP.querySelectorAll('[data-zi]').forEach(im=>im.onclick=()=>zoomImg(im.src));
  TP.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tab=b.dataset.t;tools()});
  const d=document.getElementById('dsp');
@@ -88,12 +85,15 @@ function zoomImg(src){
  o.innerHTML=`<div class='zbar'><button data-z='-'>\u2212</button><span id='zl'>100%</span><button data-z='+'>+</button><button data-z='0'>Fit</button><button data-z='x'>Close</button></div><div class='zw'></div>`;
  const im=new Image();im.src=src;im.alt='Zoomed image';
  o.querySelector('.zw').appendChild(im);document.body.appendChild(o);
- let z=100;const set=v=>{z=Math.max(50,Math.min(500,v));im.style.width=z+'%';o.querySelector('#zl').textContent=z+'%'};set(100);
+ let z=100;
+ const fit=()=>{im.style.width='auto';im.style.height='auto';im.style.maxWidth='95vw';im.style.maxHeight='calc(100vh - 84px)';im.style.objectFit='contain';o.querySelector('#zl').textContent='Fit';};
+ const set=v=>{z=Math.max(50,Math.min(500,v));im.style.maxWidth='none';im.style.maxHeight='none';im.style.width=z+'%';o.querySelector('#zl').textContent=z+'%'};
  const kd=e=>{if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')set(z+25);else if(e.key==='-')set(z-25)};
  const close=()=>{o.remove();document.removeEventListener('keydown',kd)};
  document.addEventListener('keydown',kd);
- o.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{const k=b.dataset.z;if(k==='x')close();else if(k==='0')set(100);else set(z+(k==='+'?25:-25))});
+ o.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{const k=b.dataset.z;if(k==='x')close();else if(k==='0')fit();else set(z+(k==='+'?25:-25))});
  im.ondblclick=()=>set(z>100?100:250);
+ fit();
 }
 window.zoomImg=zoomImg;
 })();

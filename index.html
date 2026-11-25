@@ -23,14 +23,15 @@ a.t i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-to
 </head>
 <body>
 <main>
-<h1>Physics 12 Practice Tests</h1>
-<p class="sub">Pick a test to start.</p>
+<h1>Grade 12 Practice Tests</h1>
+<p class="sub">Pick a subject and a test to start.</p>
 <div class="grid" id="g"></div>
 </main>
 <script>
 // To add a test: make a new test page (keep the tools.js script tag in it), then add one line here.
 const TESTS=[
- {title:'Physics 12 Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'equilibrium-quiz.html'}
+ {title:'Physics 12 Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'equilibrium-quiz.html'},
+ {title:'Biology 12: Digestion, Circulation & Respiration Practice Test',desc:'140+ multiple choice and written provincial exam questions. Diagrams and tools included.',href:'biology-12-quiz.html'}
 ];
 const g=document.getElementById('g');
 TESTS.forEach(t=>{const a=document.createElement('a');a.className='t';a.href=t.href;
