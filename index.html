@@ -30,12 +30,12 @@ a.t i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-to
 <script>
 // To add a test: make a new test page (keep the tools.js script tag in it), then add one line here.
 const TESTS=[
- {title:'Physics 12 Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'equilibrium-quiz.html'},
- {title:'Biology 12: Digestion, Circulation & Respiration Practice Test',desc:'140+ multiple choice and written provincial exam questions. Diagrams and tools included.',href:'biology-12-quiz.html'}
+ {title:'Physics 12 — Static Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'physics-equilibrium-test.html'},
+ {title:'Biology 12 — Digestion, Circulation & Respiration Practice Test',desc:'Digestion, Circulation & Respiration • 180 Questions',href:'biology-12-digestion-circulation-respiration-test.html'}
 ];
 const g=document.getElementById('g');
 TESTS.forEach(t=>{const a=document.createElement('a');a.className='t';a.href=t.href;
- a.innerHTML='<b></b><span></span><i>Start test \u2192</i>';
+ a.innerHTML='<b></b><span></span><i>Start Practice Test \u2192</i>';
  a.querySelector('b').textContent=t.title;a.querySelector('span').textContent=t.desc;g.appendChild(a)});
 const s=document.createElement('div');s.className='t soon';s.style.cssText='padding:16px;border:1px dashed var(--line);border-radius:14px';s.textContent='More tests coming soon';g.appendChild(s);
 </script>

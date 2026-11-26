@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CASIO fx-300ES PLUS NATURAL-V.P.A.M. (2nd edition)</title>
+<style>
+:root{--bg:#f4f6fb;--tx:#1b2133;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#12151f;--tx:#e8ebf4;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Arial,Helvetica,sans-serif}
+main{max-width:360px;margin:0 auto;padding:24px 12px}
+.calc-note{font-size:.78rem;line-height:1.35;color:var(--tx);background:rgba(128,138,160,.12);border:1px solid rgba(128,138,160,.35);border-radius:10px;padding:8px 10px;margin-top:10px}
+
+/* ---- Exact reference calculator skin ---- */
+.casio-fx300{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif;font-size:13px;display:block;max-width:336px;margin:0 auto;overflow:hidden}
+.casio-fx300 *{box-sizing:border-box}
+.casio-fx300 .bezel{background:#222428;border-radius:14px;overflow:hidden}
+.casio-fx300 .hdr{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 0;color:#dfe1e4;font-size:12px;font-weight:700}
+.casio-fx300 .hdr-l span{font-style:italic}
+.casio-fx300 .solar{background:#382520;width:46px;height:26px;border-radius:4px;margin-left:8px}
+.casio-fx300 .key.c-shift.active{outline:2px solid #f5b82e;background:#d9a62f;color:#3a2d12}
+.casio-fx300 .key.c-alpha.active{outline:2px solid #ff6b8b;background:#e06b91;color:#fff}
+.casio-fx300 .dpad .d{line-height:1;padding:0;font-size:9px}
+.casio-fx300 .casio-screen{background:#cfd6ce;border:4px inset #b7beb5;border-radius:6px;color:#111612 !important;margin:6px 10px 6px}
+.casio-fx300 .casio-screen *{color:#111612 !important}
+.casio-fx300 .casio-status{display:flex;justify-content:space-between;font-size:10px;font-weight:700;border-bottom:1px solid rgba(17,22,18,.18);padding-bottom:2px;margin-bottom:2px}
+.casio-fx300 .casio-expression{min-height:34px;display:flex;align-items:center;flex-wrap:wrap;font-size:15px;font-weight:600;padding:4px 0;outline:none;user-select:none;cursor:text}
+.casio-fx300 .casio-expression .frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 2px;line-height:1.05;font-size:12px}
+.casio-fx300 .casio-expression .frac .num{border-bottom:1.5px solid #111612;padding:0 3px 1px}
+.casio-fx300 .casio-expression .frac .den{padding:1px 3px 0}
+.casio-fx300 .casio-expression .cursor{display:inline-block;width:2px;height:16px;background:#111612;animation:casioBlk .7s step-end infinite;vertical-align:-3px}
+@keyframes casioBlk{50%{opacity:0}}
+.casio-fx300 .casio-result{text-align:right;font-size:20px;font-weight:700;min-height:26px;letter-spacing:.5px;word-break:break-all}
+.casio-fx300 .ctrl-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px 4px;background:#2a2d33}
+.casio-fx300 .key{border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:pointer}
+.casio-fx300 .key.c-shift{width:34px;height:34px;background:#f5b82e;color:#3a2d12}
+.casio-fx300 .key.c-alpha{width:34px;height:34px;background:#ff6b8b;color:#fff}
+.casio-fx300 .key.c-normal{width:34px;height:34px;background:#2d3036;color:#fff}
+.casio-fx300 .dpad{position:relative;width:54px;height:42px;border-radius:22px;background:#3a3e44;border:2px solid #525863}
+.casio-fx300 .dpad .d{position:absolute;width:14px;height:14px;border-radius:50%;background:#242a31;border:1px solid #525863;color:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:8px;cursor:pointer}
+.casio-fx300 .dpad .d-up{top:4px;left:50%;transform:translateX(-50%)}
+.casio-fx300 .dpad .d-down{bottom:4px;left:50%;transform:translateX(-50%)}
+.casio-fx300 .dpad .d-left{top:50%;left:4px;transform:translateY(-50%)}
+.casio-fx300 .dpad .d-right{top:50%;right:4px;transform:translateY(-50%)}
+.casio-fx300 .sci-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;width:100%}
+.casio-fx300 .key-cell{display:flex;flex-direction:column;width:100%;min-width:0}
+.casio-fx300 .key-cell.empty{height:72px}
+.casio-fx300 .sub-row{height:11px;display:flex;justify-content:space-between;font-size:7px;line-height:1}
+.casio-fx300 .sub-gold{color:#f5b82e}
+.casio-fx300 .sub-pink{color:#ff6b8b}
+.casio-fx300 .sci-btn{flex:1;min-width:0;background:#2d3036;border:none;border-radius:5px;height:50px;color:#fff;font-size:12px;font-weight:700;cursor:pointer}
+.casio-fx300 .num-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;width:100%;margin-top:6px}
+.casio-fx300 .num-btn{flex:1;min-width:0;background:#53575f;border:none;border-radius:5px;height:48px;color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+.casio-fx300 .num-btn.lime{background:#9cc43b}
+
+/* ---- Text-box editing / natural display additions ---- */
+.casio-fx300 .ch{display:inline;white-space:pre}
+.casio-fx300 .ch.sel{background:rgba(17,22,18,.28)}
+.casio-fx300 .pw sup,.casio-fx300 .sci sup{font-size:.72em;vertical-align:super;line-height:0}
+.casio-fx300 .loga sub{font-size:.72em;vertical-align:sub;line-height:0}
+.casio-fx300 .rad{display:inline-flex;align-items:flex-end;vertical-align:middle}
+.casio-fx300 .rad .bar{border-top:1px solid #111612;padding:0 1px;margin-left:1px;display:inline-block}
+.casio-fx300 .fn{font-style:normal}
+.casio-fx300 .scroll{letter-spacing:2px}
+</style>
+</head>
+<body>
+<main><div id="calc"></div><div class="calc-note">⚠️ Note: This calculator is ~80% functional—double-check critical exam math on a physical calculator.</div></main>
+<script>
+(function () {
+  'use strict';
+
+  function esc(t) {
+    return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function fmtNum(v) {
+    if (!isFinite(v)) return 'Error';
+    if (Number.isInteger(v) && Math.abs(v) < 1e15) return String(v);
+    return v.toPrecision(10).replace(/0+$/, '').replace(/\.$/, '');
+  }
+  function engStr(v) {
+    if (!isFinite(v) || v === 0) return fmtNum(v);
+    var a = Math.abs(v), e = Math.floor(Math.log10(a)), r = Math.floor(e / 3) * 3;
+    var m = a / Math.pow(10, r);
+    var prefix = ['f', 'p', 'n', 'µ', 'm', '', 'k', 'M', 'G'][r / 3 + 5];
+    return (v < 0 ? '-' : '') + fmtNum(m) + (prefix || '');
+  }
+  function isMinus(c) { return c === '-' || c === '−'; }
+  function fact(n) {
+    var r = 1, m = Math.round(n);
+    if (m < 0) return NaN;
+    for (var i = 2; i <= m; i++) r *= i;
+    return r;
+  }
+  function gcd(a, b) { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) { var t = a % b; a = b; b = t; } return a; }
+  function lcm(a, b) { if (!a || !b) return 0; return Math.abs(a * b) / gcd(a, b); }
+  function ranInt(a, b) { if (b < a) { var t = a; a = b; b = t; } return Math.floor(Math.random() * (b - a + 1)) + a; }
+  function factStr(n) {
+    n = Math.round(n);
+    if (n < 2) return '1';
+    var out = [], f = 2, x = n;
+    while (f * f <= x) { while (x % f === 0) { out.push(f); x = Math.floor(x / f); } f++; }
+    if (x > 1) out.push(x);
+    var s = {};
+    out.forEach(function (v) { s[v] = (s[v] || 0) + 1; });
+    return Object.keys(s).map(Number).sort(function (a, b) { return a - b; })
+      .map(function (k) { return k + (s[k] > 1 ? '^' + s[k] : ''); }).join(' × ');
+  }
+  function fracStr(x) {
+    if (!isFinite(x)) return null;
+    var ng = x < 0, v = Math.abs(x);
+    if (Number.isInteger(parseFloat(v.toPrecision(12)))) return String((ng ? -1 : 1) * Math.round(v));
+    var h1 = 1, h2 = 0, k1 = 0, k2 = 1, b = v;
+    for (var n = 0; n < 30; n++) {
+      var a = Math.floor(b), h = a * h1 + h2, k = a * k1 + k2;
+      h2 = h1; h1 = h; k2 = k1; k1 = k;
+      if (k > 10000) return null;
+      if (Math.abs(v - h / k) < 1e-9 * Math.max(1, v)) {
+        var s = ng ? '-' : '', w = Math.floor(h / k), r = h % k;
+        return s + h + '/' + k + (w > 0 && r > 0 ? ' (' + s + w + ' ' + r + '/' + k + ')' : '');
+      }
+      if (b - a < 1e-12) return null;
+      b = 1 / (b - a);
+    }
+    return null;
+  }
+  function fm(v) {
+    if (!isFinite(v)) return 'Error';
+    if (Math.abs(v) < 1e-12) v = 0;
+    return String(parseFloat(v.toPrecision(10)));
+  }
+
+  /* Expression evaluator (order of operations, functions, DMS, variables) */
+  function evalExpr(text, st) {
+    var s = String(text == null ? '' : text), i = 0, v;
+    function err() { throw new Error('SyntaxError'); }
+    function ws() { while (i < s.length && s.charAt(i) === ' ') i++; }
+    function add() {
+      ws(); var vv = mul();
+      while (true) {
+        ws(); var c = s.charAt(i);
+        if (c === '+') { i++; vv = vv + mul(); }
+        else if (isMinus(c)) { i++; vv = vv - mul(); }
+        else break;
+      }
+      return vv;
+    }
+    function mul() {
+      ws(); var vv = pow();
+      while (true) {
+        ws(); var c = s.charAt(i);
+        if (c === '*' || c === '×' || c === '·') { i++; vv = vv * pow(); }
+        else if (c === '/' || c === '÷') { i++; vv = vv / pow(); }
+        else break;
+      }
+      return vv;
+    }
+    function pow() {
+      ws(); var vv = unary();
+      while (true) { ws(); if (s.charAt(i) === '^') { i++; vv = Math.pow(vv, pow()); } else break; }
+      return vv;
+    }
+    function unary() {
+      ws(); var c = s.charAt(i);
+      if (isMinus(c)) { i++; return -unary(); }
+      if (c === '+') { i++; return unary(); }
+      var vv = primary();
+      while (s.charAt(i) === '!') { i++; vv = fact(vv); }
+      return vv;
+    }
+    function args() {
+      var a = []; ws();
+      if (s.charAt(i) !== '(') return a;
+      i++; a.push(add()); ws();
+      if (s.charAt(i) === ')') i++;
+      while (true) {
+        ws();
+        if (s.charAt(i) === '(') { i++; a.push(add()); ws(); if (s.charAt(i) === ')') i++; }
+        else if (s.charAt(i) === ',') { i++; a.push(add()); ws(); if (s.charAt(i) === ')') i++; }
+        else break;
+      }
+      return a;
+    }
+    function toRad(vv) { return st.mode === 'RAD' ? vv : (st.mode === 'GRA' ? vv * Math.PI / 200 : vv * Math.PI / 180); }
+    function backRad(vv) { return st.mode === 'RAD' ? vv : (st.mode === 'GRA' ? vv * 200 / Math.PI : vv * 180 / Math.PI); }
+    function numberOrDMS() {
+      ws(); var t = '';
+      while (i < s.length && ((s.charAt(i) >= '0' && s.charAt(i) <= '9') || s.charAt(i) === '.')) t += s.charAt(i++);
+      var deg = parseFloat(t) || 0, m = 0, sec = 0;
+      ws(); var c = s.charAt(i);
+      if (c === '°' || c === "'" || c === '″') {
+        i++; ws();
+        var t2 = '';
+        while (i < s.length && ((s.charAt(i) >= '0' && s.charAt(i) <= '9') || s.charAt(i) === '.')) t2 += s.charAt(i++);
+        m = parseFloat(t2) || 0;
+        ws();
+        if (s.charAt(i) === "'") {
+          i++; ws(); var t3 = '';
+          while (i < s.length && ((s.charAt(i) >= '0' && s.charAt(i) <= '9') || s.charAt(i) === '.')) t3 += s.charAt(i++);
+          sec = parseFloat(t3) || 0;
+        }
+      }
+      return deg + m / 60 + sec / 3600;
+    }
+    function primary() {
+      ws(); var c = s.charAt(i);
+      if (c === '(') { i++; var vv = add(); ws(); if (s.charAt(i) === ')') i++; return vv; }
+      if ((c >= '0' && c <= '9') || c === '.') return numberOrDMS();
+      if (c === '√') { i++; var a = args(); return Math.sqrt(a[0] || 0); }
+      if (c === '∛') { i++; var a = args(); return Math.cbrt(a[0] || 0); }
+      if (s.indexOf('ᵅ√', i) === i) { i += 2; var a = args(); return Math.pow(a[0], 1 / (a[1] || 1)); }
+      var m = /^[A-Za-z₀₃π⁻¹°′″]+/.exec(s.slice(i));
+      if (!m) err();
+      var id = m[0]; i += id.length;
+      var a = args(), v0 = a[0];
+      switch (id) {
+        case 'sin': return Math.sin(toRad(v0 || 0));
+        case 'cos': return Math.cos(toRad(v0 || 0));
+        case 'tan': return Math.tan(toRad(v0 || 0));
+        case 'sin⁻¹': return backRad(Math.asin(v0 || 0));
+        case 'cos⁻¹': return backRad(Math.acos(v0 || 0));
+        case 'tan⁻¹': return backRad(Math.atan(v0 || 0));
+        case 'asin': case 'arcsin': return backRad(Math.asin(v0 || 0));
+        case 'acos': case 'arccos': return backRad(Math.acos(v0 || 0));
+        case 'atan': case 'arctan': return backRad(Math.atan(v0 || 0));
+        case 'sinh': return Math.sinh ? Math.sinh(v0 || 0) : 0;
+        case 'cosh': return Math.cosh ? Math.cosh(v0 || 0) : 0;
+        case 'tanh': return Math.tanh ? Math.tanh(v0 || 0) : 0;
+        case 'log': return Math.log(v0 || 1) / Math.LN10;
+        case 'ln': return Math.log(v0 || 1);
+        case 'logₐ': return a.length > 1 ? Math.log(a[1]) / Math.log(a[0] || 1) : 0;
+        case 'Abs': return Math.abs(v0 || 0);
+        case 'sqrt': return Math.sqrt(v0 || 0);
+        case 'cbrt': return Math.cbrt(v0 || 0);
+        case 'dms': return v0 || 0;
+        case 'FACT': return factStr(v0 || 0);
+        case 'GCD': return gcd(v0 || 0, a[1] || 0);
+        case 'LCM': return lcm(v0 || 0, a[1] || 0);
+        case 'Int': return Math.trunc(v0 || 0);
+        case 'Intg': return Math.floor(v0 || 0);
+        case 'Rnd': return Math.round(v0 || 0);
+        case 'RanInt': return ranInt(v0 || 0, a[1] || 0);
+        case 'Pol': return Math.sqrt((v0 || 0) * (v0 || 0) + (a[1] || 0) * (a[1] || 0));
+        case 'Rec': return (v0 || 0) * Math.cos((a[1] || 0));
+        case 'PreAns': return st.preAns != null ? st.preAns : (st.ansv || 0);
+        case 'Ans': case 'An': return st.ansv || 0;
+        case 'Ran#': return Math.random();
+        case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'X': case 'Y':
+          return st.vars[id] != null ? st.vars[id] : 0;
+        case 'M': return st.mem || 0;
+        case 'e': return Math.E;
+        case 'π': return Math.PI;
+        default: err();
+      }
+      return 0;
+    }
+    try { v = add(); if (i < s.length) err(); } catch (e) { return NaN; }
+    return v;
+  }
+
+  var KEYS = {
+    sci: [
+      [
+        {label: 'Abs', act: 'ins:Abs(', s: '÷R'},
+        {label: 'x³', act: 'ins:^3', s: '³√', actS: 'ins:∛('},
+        null, null,
+        {label: 'x⁻¹', act: 'ins:^(-1)', s: 'x!', actS: 'ins:!'},
+        {label: 'logₐ(b)', act: 'ins:logₐ(', s: '∑', actS: 'ins:logₐ('}
+      ],
+      [
+        {label: 'a/b', act: 'ins:/', s: 'a b/c', actS: 'frac'},
+        {label: '√', act: 'ins:√(', s: '∛', actS: 'ins:√('},
+        {label: 'x²', act: 'ins:^2', s: 'x³', actS: 'ins:^3'},
+        {label: 'x^', act: 'ins:^', s: 'ᵅ√', actS: 'ins:ᵅ√('},
+        {label: 'log', act: 'ins:log(', s: '10^', actS: 'ins:10^('},
+        {label: 'ln', act: 'ins:ln(', s: 'e^', actS: 'ins:e^(', a: 'e', actA: 'ins:e'}
+      ],
+      [
+        {label: '(-)', act: 'ins:−', a: 'A', actA: 'ins:A'},
+        {label: '° ′ ″', act: 'ins:dms(', s: 'FACT', actS: 'ins:FACT(', a: 'B', actA: 'ins:B'},
+        {label: 'hyp', act: 'hyp', a: 'C', actA: 'ins:C'},
+        {label: 'sin', act: 'ins:sin(', s: 'sin⁻¹', actS: 'ins:sin⁻¹(', a: 'D', actA: 'ins:D'},
+        {label: 'cos', act: 'ins:cos(', s: 'cos⁻¹', actS: 'ins:cos⁻¹(', a: 'E', actA: 'ins:E'},
+        {label: 'tan', act: 'ins:tan(', s: 'tan⁻¹', actS: 'ins:tan⁻¹(', a: 'F', actA: 'ins:F'}
+      ],
+      [
+        {label: 'RCL', act: 'ins:M', s: 'STO', actS: 'sto'},
+        {label: 'ENG', act: 'eng', actS: 'eng'},
+        {label: '(', act: 'ins:(', actS: 'ins:%'},
+        {label: ')', act: 'ins:)', s: ',', actS: 'ins:”', actA: 'ins:X'},
+        {label: 'S<=>D', act: 'frac', s: 'a b/c↔d/c', actS: 'frac', actA: 'ins:Y'},
+        {label: 'M+', act: 'mem', s: 'M−', actS: 'mem-', actA: 'ins:M'}
+      ]
+    ],
+    num: [
+      [
+        {label: '7', act: 'ins:7', s: 'CLR', actS: 'ins:'},
+        {label: '8', act: 'ins:8'},
+        {label: '9', act: 'ins:9'},
+        {label: 'DEL', act: 'del', s: 'INS', actS: 'del', cls: 'lime'},
+        {label: 'AC', act: 'clr', s: 'OFF', actS: 'clr', cls: 'lime'}
+      ],
+      [
+        {label: '4', act: 'ins:4'},
+        {label: '5', act: 'ins:5'},
+        {label: '6', act: 'ins:6'},
+        {label: '×', act: 'ins:×', s: 'nPr', actS: 'ins:nPr', a: 'GCD', actA: 'ins:GCD'},
+        {label: '÷', act: 'ins:÷', s: 'nCr', actS: 'ins:nCr', a: 'LCM', actA: 'ins:LCM'}
+      ],
+      [
+        {label: '1', act: 'ins:1', s: 'STAT'},
+        {label: '2', act: 'ins:2'},
+        {label: '3', act: 'ins:3'},
+        {label: '+', act: 'ins:+', s: 'Pol(', actS: 'ins:Pol(', a: 'Int', actA: 'ins:Int'},
+        {label: '−', act: 'ins:−', s: 'Rec(', actS: 'ins:Rec(', a: 'Intg', actA: 'ins:Intg'}
+      ],
+      [
+        {label: '0', act: 'ins:0', s: 'Rnd', actS: 'ins:Rnd()'},
+        {label: '.', act: 'ins:.', s: 'Ran#', actS: 'ins:Ran#', a: 'RanInt', actA: 'ins:RanInt('},
+        {label: '×10^', act: 'ins:×10^(', s: 'π', actS: 'ins:π', a: 'e', actA: 'ins:e'},
+        {label: 'Ans', act: 'ins:Ans', s: 'DRG▸', actS: 'ins:DRG▸', a: 'PreAns', actA: 'ins:PreAns'},
+        {label: '=', act: 'eq'}
+      ]
+    ]
+  };
+
+  var container = document.getElementById('calc');
+  var ST = {
+    shift: false, alpha: false, hyp: false, mode: 'DEG', stat: false, eng: false,
+    expr: '', res: '', pos: 0, anchor: 0, selA: 0, selB: 0,
+    mem: 0, ansv: 0, preAns: null, vars: {}, showFrac: false, lastVal: null,
+    storing: false, dirty: false, repeatExpr: '',
+    hist: [], histIdx: 0, draft: ''
+  };
+  try { ST.hist = JSON.parse(localStorage.getItem('eqh') || '[]'); } catch (e) { ST.hist = []; }
+  function saveHist() { try { localStorage.setItem('eqh', JSON.stringify(ST.hist)); } catch (e) {} }
+
+  function hsave() { saveHist(); }
+  function resText() {
+    if (ST.lastVal != null) {
+      if (ST.showFrac) { var f = fracStr(ST.lastVal); if (f != null) return f; }
+      return ST.eng ? engStr(ST.lastVal) : fm(ST.lastVal);
+    }
+    return ST.res || '';
+  }
+
+  function markDirty() { ST.dirty = true; ST.repeatExpr = ''; ST.histIdx = 0; }
+  function clamp(n) { return Math.max(0, Math.min(ST.expr.length, n)); }
+  function collapse(n) { ST.pos = clamp(n); ST.anchor = ST.pos; ST.selA = ST.selB = ST.pos; refresh(); }
+  function selectRange(a, b) {
+    ST.selA = clamp(Math.min(a, b)); ST.selB = clamp(Math.max(a, b));
+    ST.pos = ST.selB; ST.anchor = clamp(a); refresh();
+  }
+
+  function insertText(s) {
+    if (!s) return;
+    if (ST.selA !== ST.selB) {
+      ST.expr = ST.expr.slice(0, ST.selA) + s + ST.expr.slice(ST.selB);
+      ST.pos = ST.selA + s.length;
+    } else {
+      ST.expr = ST.expr.slice(0, ST.pos) + s + ST.expr.slice(ST.pos);
+      ST.pos += s.length;
+    }
+    ST.selA = ST.selB = ST.anchor = ST.pos;
+    markDirty(); refresh();
+  }
+  function deleteSelection() {
+    if (ST.selA === ST.selB) return false;
+    ST.expr = ST.expr.slice(0, ST.selA) + ST.expr.slice(ST.selB);
+    ST.pos = ST.selA; ST.selA = ST.selB = ST.anchor = ST.pos;
+    markDirty(); return true;
+  }
+  function deleteBefore() {
+    if (deleteSelection()) { refresh(); return; }
+    if (ST.pos > 0) { ST.expr = ST.expr.slice(0, ST.pos - 1) + ST.expr.slice(ST.pos); ST.pos--; ST.anchor = ST.pos; markDirty(); refresh(); }
+  }
+  function deleteAt() {
+    if (deleteSelection()) { refresh(); return; }
+    if (ST.pos < ST.expr.length) { ST.expr = ST.expr.slice(0, ST.pos) + ST.expr.slice(ST.pos + 1); markDirty(); refresh(); }
+    else if (ST.pos > 0) { ST.expr = ST.expr.slice(0, ST.pos - 1); ST.pos--; ST.anchor = ST.pos; markDirty(); refresh(); }
+  }
+  function clearAll() {
+    ST.expr = ''; ST.res = ''; ST.lastVal = null; ST.pos = ST.anchor = ST.selA = ST.selB = 0;
+    markDirty(); refresh();
+  }
+
+  function makeRepeat(e) {
+    var m = /^\s*(\d+(?:\.\d+)?)\s*([+\-×÷^])\s*(.+)$/.exec(e);
+    return m ? 'Ans' + m[2] + m[3] : e;
+  }
+  function compute() {
+    if (!ST.expr && !ST.repeatExpr) return;
+    var first = ST.dirty || !ST.repeatExpr;
+    var target = first ? ST.expr : ST.repeatExpr;
+    if (!target) return;
+    var v = evalExpr(target, ST);
+    if (typeof v === 'string') {
+      ST.res = v; ST.lastVal = null;
+    } else if (isNaN(v) || !isFinite(v)) {
+      ST.res = 'Error'; ST.lastVal = null;
+    } else {
+      ST.lastVal = v; ST.ansv = v; ST.preAns = v;
+    }
+    if (first) {
+      ST.repeatExpr = makeRepeat(ST.expr);
+      ST.dirty = false;
+      ST.hist.unshift({e: ST.expr, r: resText()});
+      if (ST.hist.length > 40) ST.hist.pop();
+      saveHist();
+    } else {
+      ST.expr = ST.repeatExpr;
+      ST.pos = ST.anchor = ST.selA = ST.selB = ST.expr.length;
+    }
+    ST.res = resText();
+    refresh();
+  }
+
+  function histMove(dir) {
+    if (dir > 0) {
+      if (ST.histIdx === 0) ST.draft = ST.expr;
+      if (ST.histIdx < ST.hist.length) ST.histIdx++;
+    } else {
+      if (ST.histIdx > 0) ST.histIdx--;
+    }
+    var rec = ST.histIdx ? ST.hist[ST.hist.length - ST.histIdx] : null;
+    ST.expr = rec ? rec.e : ST.draft;
+    ST.res = rec ? (rec.r || '') : '';
+    ST.lastVal = null;
+    ST.pos = ST.anchor = ST.selA = ST.selB = ST.expr.length;
+    refresh();
+  }
+
+  function runAction(act) {
+    if (!act) return;
+    if (act === 'shift') { ST.shift = !ST.shift; refresh(); return; }
+    if (act === 'alph') { ST.alpha = !ST.alpha; refresh(); return; }
+    if (act === 'mode') ST.mode = ST.mode === 'DEG' ? 'RAD' : (ST.mode === 'RAD' ? 'GRA' : 'DEG');
+    else if (act === 'stat') ST.stat = !ST.stat;
+    else if (act === 'eng') ST.eng = !ST.eng;
+    else if (act === 'hyp') ST.hyp = !ST.hyp;
+    else if (act === 'del') deleteAt();
+    else if (act === 'clr') clearAll();
+    else if (act === 'eq') compute();
+    else if (act === 'frac') ST.showFrac = !ST.showFrac;
+    else if (act === 'mem') { if (ST.lastVal != null) { if (ST.shift) ST.mem -= ST.lastVal; else ST.mem += ST.lastVal; } }
+    else if (act === 'mem-') { if (ST.lastVal != null) ST.mem -= ST.lastVal; }
+    else if (act === 'sto') ST.storing = true;
+    else if (act.indexOf('ins:') === 0) insertText(act.slice(4));
+    refresh();
+  }
+
+  function invokeFrom(o) {
+    var act = o.act;
+    if (ST.shift && o.actS) act = o.actS;
+    else if (ST.alpha && o.actA) act = o.actA;
+    else if (ST.hyp && (o.label === 'sin' || o.label === 'cos' || o.label === 'tan')) {
+      act = 'ins:' + (o.label === 'sin' ? 'sinh(' : o.label === 'cos' ? 'cosh(' : 'tanh(');
+    }
+    if (ST.storing && typeof act === 'string' && /^ins:[A-FYM]$/.test(act)) {
+      var nm = act.slice(4);
+      if (ST.lastVal != null) ST.vars[nm] = ST.lastVal;
+      ST.storing = false; refresh(); return;
+    }
+    runAction(act);
+    if (act !== 'shift' && act !== 'alph') { ST.shift = false; ST.alpha = false; }
+  }
+  function invokeBtn(b) {
+    invokeFrom({
+      label: b.getAttribute('data-l') || '', act: b.getAttribute('data-a') || '',
+      actS: b.getAttribute('data-s') || null, actA: b.getAttribute('data-al') || null
+    });
+    var e = container.querySelector('.casio-expression');
+    if (e) e.focus();
+  }
+
+  /* ---- Natural textbook rendering ---- */
+  function ch(i, hidden) {
+    return '<span class="ch" data-i="' + i + '"' + (hidden ? ' style="display:none"' : '') + '>' + esc(ST.expr.charAt(i)) + '</span>';
+  }
+  function chars(a, b) {
+    var s = '';
+    for (var i = a; i < b; i++) s += ch(i);
+    return s;
+  }
+  function tokenize(s) {
+    var out = [], i = 0;
+    function matchParen(start) {
+      var d = 0;
+      for (var k = start; k < s.length; k++) {
+        if (s.charAt(k) === '(') d++;
+        else if (s.charAt(k) === ')') { d--; if (d === 0) return k; }
+      }
+      return -1;
+    }
+    while (i < s.length) {
+      var rest = s.slice(i), m, j, close, root;
+      if ((m = /^\d+(?:\.\d+)?\/\d+(?:\.\d+)?/.exec(rest))) {
+        out.push({t: 'frac', s: i, e: i + m[0].length, txt: m[0]}); i += m[0].length; continue;
+      }
+      if (s.charAt(i) === '^') {
+        j = i + 1;
+        if (s.charAt(j) === '(') { close = matchParen(j); j = close > j ? close + 1 : i + 1; }
+        else while (j < s.length && /[\d.]/.test(s.charAt(j))) j++;
+        if (j > i + 1) { out.push({t: 'pow', s: i, e: j, expS: i + 1}); i = j; continue; }
+      }
+      root = rest.indexOf('ᵅ√(') === 0 ? 'ᵅ√(' : (rest.indexOf('∛(') === 0 ? '∛(' : (rest.indexOf('√(') === 0 ? '√(' : ''));
+      if (root) {
+        var open = i + root.length - 1; close = matchParen(open);
+        if (close > open) { out.push({t: 'root', s: i, e: close + 1, open: open, close: close}); i = close + 1; continue; }
+      }
+      if (rest.indexOf('×10^(') === 0) {
+        open = i + 4; close = matchParen(open);
+        if (close > open) { out.push({t: 'sci', s: i, e: close + 1, open: open, close: close}); i = close + 1; continue; }
+      }
+      if (rest.indexOf('logₐ(') === 0) {
+        open = i + 4; close = matchParen(open);
+        if (close > open) { out.push({t: 'loga', s: i, e: close + 1, open: open, close: close}); i = close + 1; continue; }
+      }
+      if ((m = /^(sin⁻¹|cos⁻¹|tan⁻¹|sinh|cosh|tanh|sin|cos|tan|logₐ|log|ln|Abs|GCD|LCM|Intg|Int|Rnd|RanInt|Pol|Rec|FACT|dms|sqrt|cbrt|Ans|PreAns|π|e)/.exec(rest))) {
+        out.push({t: 'fn', s: i, e: i + m[0].length}); i += m[0].length; continue;
+      }
+      out.push({t: 'ch', s: i, e: i + 1}); i++;
+    }
+    return out;
+  }
+  function renderTokens() {
+    var h = '';
+    tokenize(ST.expr).forEach(function (t) {
+      if (t.t === 'frac') {
+        var slash = t.txt.indexOf('/'), ns = t.s, ne = t.s + slash, ds = ne + 1, de = t.e;
+        h += '<span class="frac"><span class="num">' + chars(ns, ne) + '</span>' + ch(ne, true) +
+             '<span class="den">' + chars(ds, de) + '</span></span>';
+      } else if (t.t === 'pow') {
+        h += '<span class="pw">' + ch(t.s, true) + '<sup>' + chars(t.expS, t.e) + '</sup></span>';
+      } else if (t.t === 'root') {
+        h += '<span class="rad">' + chars(t.s, t.open) + ch(t.open, true) +
+             '<span class="bar">' + chars(t.open + 1, t.close) + '</span>' + ch(t.close, true) + '</span>';
+      } else if (t.t === 'sci') {
+        h += '<span class="sci">' + chars(t.s, t.s + 3) + ch(t.s + 3, true) + ch(t.open, true) +
+             '<sup>' + chars(t.open + 1, t.close) + '</sup>' + ch(t.close, true) + '</span>';
+      } else if (t.t === 'loga') {
+        h += '<span class="loga">' + chars(t.s, t.s + 3) + '<sub>' + chars(t.s + 3, t.s + 4) + '</sub>' +
+             ch(t.open, true) + chars(t.open + 1, t.close) + ch(t.close, true) + '</span>';
+      } else if (t.t === 'fn') {
+        h += '<span class="fn">' + chars(t.s, t.e) + '</span>';
+      } else {
+        h += chars(t.s, t.e);
+      }
+    });
+    return h;
+  }
+  function decorate(h) {
+    if (ST.selA !== ST.selB) {
+      h = h.replace(/class="ch" data-i="(\d+)"/g, function (m, n) {
+        n = +n;
+        return (n >= ST.selA && n < ST.selB) ? 'class="ch sel" data-i="' + n + '"' : m;
+      });
+    }
+    if (ST.pos >= ST.expr.length) return h + '<span class="cursor"></span>';
+    var re = new RegExp('<span class="ch(?: sel)?" data-i="' + ST.pos + '"');
+    return h.replace(re, '<span class="cursor"></span>$&');
+  }
+
+  function statusHtml() {
+    var f = [];
+    if (ST.shift) f.push('S');
+    if (ST.alpha) f.push('A');
+    if (ST.mem) f.push('M');
+    f.push(ST.mode); f.push('Math');
+    if (ST.eng) f.push('ENG');
+    if (ST.showFrac) f.push('d/c');
+    var e = container.querySelector('.casio-expression');
+    var scroll = '';
+    if (e) {
+      if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1) {
+        if (ST.pos > 0) scroll += '◂';
+        if (ST.pos < ST.expr.length) scroll += '▸';
+        if (e.scrollHeight > e.clientHeight + 1) scroll += '▾';
+      }
+    }
+    return '<span>' + f.join(' ') + '</span><span class="scroll">' + scroll + '</span>';
+  }
+
+  function refresh() {
+    var e = container.querySelector('.casio-expression');
+    var r = container.querySelector('.casio-result');
+    var t = container.querySelector('.casio-status');
+    if (e) e.innerHTML = decorate(renderTokens());
+    if (r) r.textContent = resText();
+    if (t) t.innerHTML = statusHtml();
+    var ctrls = container.querySelectorAll('.ctrl-row .key');
+    for (var i = 0; i < ctrls.length; i++) {
+      var l = ctrls[i].getAttribute('data-l');
+      ctrls[i].classList.toggle('active', (l === 'SHIFT' && ST.shift) || (l === 'ALPHA' && ST.alpha));
+    }
+  }
+
+  function indexFromPoint(x, y) {
+    var e = container.querySelector('.casio-expression');
+    if (!e) return ST.expr.length;
+    var spans = e.querySelectorAll('.ch'), best = null, bd = Infinity;
+    for (var i = 0; i < spans.length; i++) {
+      var rect = spans[i].getBoundingClientRect();
+      if (!rect.width && !rect.height) continue;
+      var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      var d = Math.abs(x - cx) + Math.abs(y - cy) * 2;
+      if (d < bd) { bd = d; best = {i: +spans[i].getAttribute('data-i'), left: rect.left, center: cx}; }
+    }
+    if (!best) return ST.expr.length;
+    return x < best.center ? best.i : best.i + 1;
+  }
+
+  function makeCell(k, cls) {
+    var cell = document.createElement('div');
+    cell.className = 'key-cell';
+    if (!k) { cell.className += ' empty'; return cell; }
+    var row = document.createElement('div'); row.className = 'sub-row';
+    var gold = document.createElement('span'); gold.className = 'sub-gold'; gold.textContent = k.s || '';
+    var pink = document.createElement('span'); pink.className = 'sub-pink'; pink.textContent = k.a || '';
+    row.appendChild(gold); row.appendChild(pink);
+    var b = document.createElement('button');
+    b.className = (cls || 'sci-btn') + (k.cls ? ' ' + k.cls : '');
+    b.setAttribute('data-l', k.label);
+    b.setAttribute('data-a', k.act || '');
+    if (k.actS) b.setAttribute('data-s', k.actS);
+    if (k.actA) b.setAttribute('data-al', k.actA);
+    b.textContent = k.label;
+    b.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    b.addEventListener('click', function () { invokeBtn(b); });
+    cell.appendChild(row); cell.appendChild(b);
+    return cell;
+  }
+
+  (function build() {
+    container.innerHTML =
+      '<div class="casio-fx300">' +
+      '<div class="bezel">' +
+      '<div class="hdr"><span class="hdr-l">CASIO <span>fx-300ES PLUS NATURAL-V.P.A.M.</span></span><span class="hdr-r">2nd edition</span><div class="solar"></div></div>' +
+      '<div class="casio-screen">' +
+      '<div class="casio-status"></div>' +
+      '<div class="casio-expression" tabindex="0" role="textbox" aria-label="Expression input"></div>' +
+      '<div class="casio-result"></div>' +
+      '</div>' +
+      '<div class="ctrl-row">' +
+      '<button class="key c-shift" data-l="SHIFT" data-a="shift">SHIFT</button>' +
+      '<button class="key c-alpha" data-l="ALPHA" data-a="alph">ALPHA</button>' +
+      '<div class="dpad"><span class="d d-up" data-dir="up">▲</span><span class="d d-down" data-dir="down">▼</span>' +
+      '<span class="d d-left" data-dir="left">◀</span><span class="d d-right" data-dir="right">▶</span></div>' +
+      '<button class="key c-normal" data-l="MODE SETUP" data-a="mode">MODE SETUP</button>' +
+      '<button class="key c-normal" data-l="ON" data-a="clr">ON</button>' +
+      '</div>' +
+      '<div class="sci-grid"></div><div class="num-grid"></div>' +
+      '</div></div>';
+    var sci = container.querySelector('.sci-grid');
+    KEYS.sci.forEach(function (row) { row.forEach(function (k) { sci.appendChild(makeCell(k, 'sci-btn')); }); });
+    var num = container.querySelector('.num-grid');
+    KEYS.num.forEach(function (row) { row.forEach(function (k) { num.appendChild(makeCell(k, 'num-btn')); }); });
+    Array.prototype.forEach.call(container.querySelectorAll('.ctrl-row .key'), function (b) {
+      b.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      b.addEventListener('click', function () { invokeBtn(b); });
+    });
+    Array.prototype.forEach.call(container.querySelectorAll('.dpad .d'), function (d) {
+      d.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+      d.addEventListener('click', function () {
+        var dir = d.getAttribute('data-dir');
+        if (dir === 'up') histMove(1);
+        else if (dir === 'down') histMove(-1);
+        else if (dir === 'left') collapse(ST.pos - 1);
+        else if (dir === 'right') collapse(ST.pos + 1);
+        var e = container.querySelector('.casio-expression'); if (e) e.focus();
+      });
+    });
+
+    var exprEl = container.querySelector('.casio-expression'), dragging = false;
+    exprEl.addEventListener('mousedown', function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      var idx = indexFromPoint(e.clientX, e.clientY);
+      ST.anchor = idx; ST.pos = idx; ST.selA = ST.selB = idx; dragging = true;
+      exprEl.focus(); refresh();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var idx = indexFromPoint(e.clientX, e.clientY);
+      if (idx !== ST.pos) selectRange(ST.anchor, idx);
+    });
+    window.addEventListener('mouseup', function () { dragging = false; });
+    exprEl.addEventListener('dblclick', function (e) {
+      e.preventDefault();
+      var idx = indexFromPoint(e.clientX, e.clientY);
+      var a = idx, b = idx;
+      while (a > 0 && /[\w.]/.test(ST.expr.charAt(a - 1))) a--;
+      while (b < ST.expr.length && /[\w.]/.test(ST.expr.charAt(b))) b++;
+      if (a === b) { a = Math.max(0, idx - 1); b = Math.min(ST.expr.length, idx + 1); }
+      selectRange(a, b);
+    });
+  })();
+
+  document.addEventListener('keydown', function (e) {
+    if (!container || container.offsetParent === null) return;
+    var k = e.key, shift = e.shiftKey, ctrl = e.ctrlKey || e.metaKey;
+    if (ctrl && k.toLowerCase() === 'a') { e.preventDefault(); selectRange(0, ST.expr.length); return; }
+    if (k === 'ArrowLeft') {
+      e.preventDefault();
+      var l = clamp(ST.pos - 1);
+      if (shift) selectRange(ST.anchor, l); else collapse(l);
+      return;
+    }
+    if (k === 'ArrowRight') {
+      e.preventDefault();
+      var r = clamp(ST.pos + 1);
+      if (shift) selectRange(ST.anchor, r); else collapse(r);
+      return;
+    }
+    if (k === 'ArrowUp') { e.preventDefault(); histMove(1); return; }
+    if (k === 'ArrowDown') { e.preventDefault(); histMove(-1); return; }
+    if (k === 'Home') { e.preventDefault(); collapse(0); return; }
+    if (k === 'End') { e.preventDefault(); collapse(ST.expr.length); return; }
+    if (k === 'Backspace') { e.preventDefault(); deleteBefore(); return; }
+    if (k === 'Delete') { e.preventDefault(); deleteAt(); return; }
+    if (k === 'Enter') { e.preventDefault(); invokeFrom({label: 'KB', act: 'eq'}); return; }
+    if (k === 'Escape') {
+      e.preventDefault();
+      if (ST.selA !== ST.selB) collapse(ST.pos); else clearAll();
+      return;
+    }
+    if (k.length === 1 && !ctrl && !shift) {
+      e.preventDefault();
+      var c = k;
+      if (c === '*') c = '×'; else if (c === '/') c = '÷';
+      insertText(c);
+    }
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
