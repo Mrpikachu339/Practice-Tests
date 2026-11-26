@@ -60,7 +60,7 @@ TESTS.forEach(t=>{
   box.addEventListener('click',function(e){
     const b=e.target.closest('button[data-scope]');
     if(!b)return;
-    PTProgress.setLaunchFilter(t.testId,{mode:'incorrect',subcategoryId:b.dataset.scope});
+    PTProgress.setLaunchFilter(t.testId,{mode:'incorrect',scope:b.dataset.scope,subcategoryId:b.dataset.scope});
     location.href=t.href;
   });
 });

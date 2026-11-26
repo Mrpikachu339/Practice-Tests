@@ -41,6 +41,8 @@ label{display:flex;align-items:center;gap:8px;color:var(--mut);margin-top:12px}
 ul{padding-left:18px;margin:8px 0}
 .hint{color:var(--mut);font-size:.85rem;margin-top:10px}
 @media (max-width:600px){.choices{grid-template-columns:1fr;gap:8px}.choices button{padding:12px 14px;font-size:1rem}}@media (max-width:420px){.choices{gap:6px}}
+#zo{position:fixed;inset:0;z-index:100000!important;display:flex!important;flex-direction:column!important;padding-top:16px!important;padding-bottom:env(safe-area-inset-bottom,0px)}
+#zo .zbar{position:sticky;top:0;z-index:100001!important;background:#0b0f19!important;border-bottom:1px solid #263148!important;box-shadow:0 2px 12px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -94,7 +96,13 @@ function inScope(q,scope){return PTProgress.scopeMatches(QA[q.id],scope)}
 function labelFor(scope){
   if(scope==='all')return 'Overall';
   if(scope.indexOf('format:')===0)return (FORMATS.find(c=>c.id===scope.slice(7))||{}).label||scope;
-  if(scope.indexOf('topic:')===0)return (TOPICS.find(c=>c.id===scope.slice(6))||{}).label||scope;
+  if(scope.indexOf('topic:')===0){
+    const parts=scope.split(':');
+    const topic=(TOPICS.find(c=>c.id===parts[1])||{}).label||parts[1];
+    if(!parts[2])return topic;
+    const format=(FORMATS.find(c=>c.id===parts[2])||{}).label||parts[2];
+    return topic+' \u2014 '+format;
+  }
   return (CATS.find(c=>c.id===scope)||{}).label||scope;
 }
 function gradeOf(q){
@@ -263,7 +271,7 @@ function showAll(){
 }
 function applyLaunchFilter(){
   const f=PTProgress.takeLaunchFilter('physics-equilibrium');
-  if(f&&f.mode==='incorrect'){startRetry(f.subcategoryId||f.scope||'all');return true}
+  if(f&&f.mode==='incorrect'){startRetry(f.scope||f.subcategoryId||'all');return true}
   return false;
 }
 function resumeQuestion(){
@@ -291,7 +299,7 @@ function applyContinue(){
   show();highlightResume(target.id);
 }
 document.addEventListener('keydown',e=>{
-  if(document.getElementById('pt-auth-gate')||document.getElementById('pt-auth-admin-modal')||document.getElementById('pt-stats-modal')||document.getElementById('zm'))return;
+  if(document.getElementById('pt-auth-gate')||document.getElementById('pt-auth-admin-modal')||document.getElementById('pt-stats-modal')||document.getElementById('zo'))return;
   if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;const k=e.key.toUpperCase();
   if(document.querySelector('.choices')&&!answered&&'ABCD'.includes(k)&&k.length===1)pick(k);
   else if(e.key==='Enter'){const n=document.getElementById('next');if(n)n.click()}

@@ -107,6 +107,10 @@ function injectCSS(){
     'html body button.pt-stats-btn.ghost{background:transparent;color:#3b82f6}',
     'html body button.pt-stats-btn:disabled{opacity:.55;cursor:default;border-color:var(--line,#d9deea);background:transparent;color:var(--mut,#5b6478)}',
     'html body .pt-stats-mastered{margin-left:auto;color:#15803d;font-size:.78rem;font-weight:700;white-space:nowrap}',
+    'html body .pt-stats-row.pt-stats-sub{padding:5px 0 5px 10px;border-top:1px dashed var(--line,#d9deea);font-size:.76rem;background:rgba(148,163,184,.06)}',
+    'html body .pt-stats-sub .pt-stats-name{min-width:100%;font-weight:600;color:var(--mut,#5b6478)}',
+    'html body .pt-stats-sub .pt-stats-badge{padding:2px 6px;font-size:.68rem}',
+    'html body button.pt-stats-btn.compact{padding:4px 8px;font-size:.7rem}',
     'html body .pt-stats-empty{color:var(--mut,#5b6478);font-size:.85rem;margin:4px 0 0}',
     'html body button.pt-stats-grade{padding:10px 12px;border-radius:9px;border:1px solid var(--line,#d9deea);background:var(--card,#fff);color:var(--tx,#1b2133);font-size:.85rem;font-weight:700;text-align:center;cursor:pointer;flex:1 1 auto;font-family:inherit}',
     'html body button.pt-stats-grade:hover{border-color:#3b82f6}',
@@ -489,32 +493,60 @@ function scopeMatches(q,scope){
   if(!q)return false;
   if(!scope||scope==='all')return true;
   if(scope.indexOf('format:')===0)return qFormats(q).indexOf(scope.slice(7))>=0;
-  if(scope.indexOf('topic:')===0)return qTopics(q).indexOf(scope.slice(6))>=0;
+  if(scope.indexOf('topic:')===0){
+    var parts=scope.split(':');
+    if(qTopics(q).indexOf(parts[1])<0)return false;
+    return parts.length<3||qFormats(q).indexOf(parts[2])>=0;
+  }
   return (q.cats||[]).indexOf(scope)>=0;
 }
+function blankStats(){return {answered:0,correct:0,incorrect:0,total:0}}
 function computeStats(catalog,answers){
   if(!catalog||!catalog.questions)return null;
   var formats=catalog.formats||[],topics=catalog.topics||[],cats=catalog.categories||[];
-  var overall={answered:0,correct:0,incorrect:0,total:catalog.questions.length};
+  var overall=blankStats();overall.total=catalog.questions.length;
   var fPer={},tPer={},cPer={};
-  formats.forEach(function(c){fPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
-  topics.forEach(function(c){tPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
-  cats.forEach(function(c){cPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
+  var nestedIds=['mcq','written'],nestedLabels={mcq:'Multiple Choice',written:'Written Response'};
+  formats.forEach(function(c){
+    fPer[c.id]=blankStats();
+    if(nestedLabels[c.id])nestedLabels[c.id]=c.label||nestedLabels[c.id];
+  });
+  topics.forEach(function(c){
+    var p=blankStats(),nested={};
+    nestedIds.forEach(function(fid){nested[fid]=blankStats()});
+    p.formats=nested;tPer[c.id]=p;
+  });
+  cats.forEach(function(c){cPer[c.id]=blankStats()});
   catalog.questions.forEach(function(q){
-    qFormats(q).forEach(function(id){if(fPer[id])fPer[id].total++});
-    qTopics(q).forEach(function(id){if(tPer[id])tPer[id].total++});
+    var fmts=qFormats(q);
+    fmts.forEach(function(id){if(fPer[id])fPer[id].total++});
+    qTopics(q).forEach(function(id){
+      var p=tPer[id];if(!p)return;
+      p.total++;
+      fmts.forEach(function(fid){var sf=p.formats[fid];if(sf)sf.total++});
+    });
     (q.cats||[]).forEach(function(id){if(cPer[id])cPer[id].total++});
     var g=gradeAnswer(q,answers[q.id]);
     if(!g)return;
     overall[g]++;overall.answered++;
-    qFormats(q).forEach(function(id){var p=fPer[id];if(p){p[g]++;p.answered++}});
-    qTopics(q).forEach(function(id){var p=tPer[id];if(p){p[g]++;p.answered++}});
+    fmts.forEach(function(id){var p=fPer[id];if(p){p[g]++;p.answered++}});
+    qTopics(q).forEach(function(id){
+      var p=tPer[id];if(!p)return;
+      p[g]++;p.answered++;
+      fmts.forEach(function(fid){var sf=p.formats[fid];if(sf){sf[g]++;sf.answered++}});
+    });
     (q.cats||[]).forEach(function(id){var p=cPer[id];if(p){p[g]++;p.answered++}});
   });
   return {
     overall:overall,
     formats:formats.map(function(c){var p=fPer[c.id];p.id=c.id;p.label=c.label;return p}),
-    topics:topics.map(function(c){var p=tPer[c.id];p.id=c.id;p.label=c.label;return p}),
+    topics:topics.map(function(c){
+      var p=tPer[c.id],nested=p.formats;
+      p.formats=nestedIds.map(function(fid){
+        var sf=nested[fid];sf.id=fid;sf.label=nestedLabels[fid];return sf;
+      });
+      p.id=c.id;p.label=c.label;return p;
+    }),
     /* Combined legacy view: categories registered by the page (formats for
        Physics, body systems for Biology). */
     subcategories:cats.map(function(c){var p=cPer[c.id];p.id=c.id;p.label=c.label;return p})
@@ -655,10 +687,22 @@ async function counts(){
 /* ---------- shared score markup ---------- */
 
 function statsPct(s){return s&&s.answered?Math.round(s.correct/s.answered*100):0}
-function retryButton(scope,n,mastered,label){
-  if(n>0)return '<button type="button" class="pt-stats-btn" data-scope="'+esc(scope)+'">'+(label||('Retry Incorrect ('+n+')'))+'</button>';
+function retryButton(scope,n,mastered,label,compact){
+  if(n>0)return '<button type="button" class="pt-stats-btn'+(compact?' compact':'')+'" data-scope="'+esc(scope)+'">'+(label||('Retry Incorrect ('+n+')'))+'</button>';
   if(mastered)return '<span class="pt-stats-mastered">100% Mastered \u2713</span>';
   return '';
+}
+function statsSubRow(s,scope){
+  var name='<span class="pt-stats-name">\u21b3 '+esc(s.label)+'</span>';
+  if(!s.total)return '<div class="pt-stats-row pt-stats-sub">'+name+'<span class="pt-stats-num">0 / 0 \u00b7 None</span></div>';
+  var w=Math.round(s.answered/s.total*100);
+  return '<div class="pt-stats-row pt-stats-sub">'+name+
+    '<span class="pt-stats-bar"><i style="width:'+w+'%"></i></span>'+
+    '<span class="pt-stats-num">'+s.answered+' / '+s.total+'</span>'+
+    '<span class="pt-stats-badge ok">Correct \u2713 '+s.correct+'</span>'+
+    '<span class="pt-stats-badge bad">Incorrect \u2717 '+s.incorrect+'</span>'+
+    '<span class="pt-stats-pct">'+statsPct(s)+'%</span>'+
+    retryButton(scope,s.incorrect,false,null,true)+'</div>';
 }
 function statsRow(s,scope,zeroNote){
   var w=s.total?Math.round(s.answered/s.total*100):0;
@@ -671,10 +715,14 @@ function statsRow(s,scope,zeroNote){
     '<span class="pt-stats-pct">'+statsPct(s)+'%</span>'+
     retryButton(scope,s.incorrect,s.total>0&&s.answered===s.total)+'</div>';
 }
-function statsSection(label,list,prefix,zeroNoteFor){
+function statsSection(label,list,prefix,zeroNoteFor,subRows){
   if(!list||!list.length)return '';
   var h='<p class="pt-stats-section">'+esc(label)+'</p>';
-  list.forEach(function(s){h+=statsRow(s,prefix+s.id,zeroNoteFor?zeroNoteFor(s):'')});
+  list.forEach(function(s){
+    var scope=prefix+s.id;
+    h+=statsRow(s,scope,zeroNoteFor?zeroNoteFor(s):'');
+    if(subRows)h+=subRows(s,scope);
+  });
   return h;
 }
 function statsHTML(stats,opts){
@@ -694,7 +742,10 @@ function statsHTML(stats,opts){
     });
   }
   if(stats.topics&&stats.topics.length){
-    h+=statsSection('By System / Topic',stats.topics,'topic:');
+    h+=statsSection('By System / Topic',stats.topics,'topic:',null,function(t,scope){
+      if(!t.formats||!t.formats.length)return '';
+      return t.formats.map(function(f){return statsSubRow(f,scope+':'+f.id)}).join('');
+    });
   }else if(stats.subcategories&&stats.subcategories.length){
     h+=statsSection('By Subcategory',stats.subcategories,'');
   }
