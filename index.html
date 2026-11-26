@@ -13,12 +13,13 @@ main{max-width:760px;margin:0 auto;padding:28px 16px 48px}
 h1{font-size:1.7rem;margin:0 0 4px}
 .sub{color:var(--mut);margin:0 0 22px}
 .grid{display:grid;gap:12px}
-a.t{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
-a.t:hover{border-color:var(--pri)}
-a.t b{font-size:1.1rem}
-a.t span{display:block;color:var(--mut);margin-top:4px;font-size:.92rem}
-a.t i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-top:8px}
-a.t i.pt-count{color:var(--mut);font-weight:600}
+.t{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.t:hover{border-color:var(--pri)}
+.t>b{font-size:1.1rem}
+.t>span{display:block;color:var(--mut);margin-top:4px;font-size:.92rem}
+.t>i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-top:8px}
+.t>a.pt-stats-start{display:inline-block;color:var(--pri);text-decoration:none;font-weight:600;margin-top:8px;font-size:.92rem}
+.t>a.pt-stats-start:hover{text-decoration:underline}
 .soon{border-style:dashed;color:var(--mut);opacity:.7}
 </style>
 </head>
@@ -37,26 +38,34 @@ const TESTS=[
 ];
 const g=document.getElementById('g');
 TESTS.forEach(t=>{
- const a=document.createElement('a');a.className='t';a.href=t.href;
- a.innerHTML='<b></b><span></span><i>Start Practice Test \u2192</i>';
- a.querySelector('b').textContent=t.title;
- a.querySelector('span').textContent=t.desc;
- g.appendChild(a);t.el=a;
+  const card=document.createElement('div');card.className='t';
+  card.innerHTML='<b></b><span></span><a class="pt-stats-start" href="'+t.href+'">Start Practice Test →</a>'+
+    '<div class="pt-stats-card" data-stats></div>';
+  card.querySelector('b').textContent=t.title;
+  card.querySelector('span').textContent=t.desc;
+  g.appendChild(card);t.el=card;
+  const box=card.querySelector('[data-stats]');
+  box.addEventListener('click',function(e){
+    const b=e.target.closest('button[data-scope]');
+    if(!b)return;
+    PTProgress.setLaunchFilter(t.testId,{mode:'incorrect',subcategoryId:b.dataset.scope});
+    location.href=t.href;
+  });
 });
 const s=document.createElement('div');s.className='t soon';s.style.cssText='padding:16px;border:1px dashed var(--line);border-radius:14px';s.textContent='More tests coming soon';g.appendChild(s);
 
-function refreshCounts(){
-  TESTS.forEach(t=>{if(t.el)t.el.querySelector('i').textContent='Start Practice Test \u2192';t.el&&t.el.querySelector('i').classList.remove('pt-count')});
-  PTProgress.counts().then(counts=>{
-    TESTS.forEach(t=>{
-      if(!t.testId||!t.el||!Object.prototype.hasOwnProperty.call(counts,t.testId))return;
-      const label=t.el.querySelector('i');
-      label.textContent=counts[t.testId]+' / '+t.total+' answered';
-      label.classList.add('pt-count');
-    });
+async function refreshProgress(){
+  const all=await PTProgress.rows();
+  TESTS.forEach(t=>{
+    const box=t.el&&t.el.querySelector('[data-stats]');
+    if(!box)return;
+    const row=all[t.testId];
+    const stats=row&&row.__stats;
+    box.innerHTML=stats?PTProgress.statsHTML(stats,{menu:true}):
+      '<p class="pt-stats-empty">No progress yet — start the test to track Correct / Incorrect / %.</p>';
   });
 }
-PTAuth.init({onUnlock:refreshCounts,onLock:refreshCounts});
+PTAuth.init({onUnlock:refreshProgress,onLock:refreshProgress});
 </script>
 </body>
 </html>

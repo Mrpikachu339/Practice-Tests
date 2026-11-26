@@ -1,11 +1,15 @@
-/* Shared authentication, user management and cross-device progress sync.
+/* Shared authentication, user management, progress sync and score statistics.
    Include this file (as a normal script) before a page's own inline script.
    Pages can use:
      PTAuth.init({ onUnlock(session), onLock() })
-     PTProgress.create({ testId, total, get(), set(state) })
+     PTAuth.addBarButton({ id, label, onClick })
+     PTProgress.create({ testId, total, catalog, get(), set(state) })
+     PTProgress.rows()    -> { [test_id]: answers object (includes __stats) }
      PTProgress.counts()  -> { [test_id]: answeredCount }
+     PTProgress.setLaunchFilter(testId, filter) / takeLaunchFilter(testId)
    All styling is injected here as #pt-auth-styles; no external CSS is required.
-   Sessions live only in localStorage. Usernames never go into the URL. */
+   Sessions live only in localStorage. Retry filters live in sessionStorage.
+   Usernames never go into the URL. */
 (function(){
 'use strict';
 
@@ -83,6 +87,44 @@ function injectCSS(){
     'html body button.pt-auth-reset{display:inline-block;margin-top:14px;background:none;border:0;padding:0;color:#64748b;font-size:.8rem;text-decoration:underline;cursor:pointer;text-align:left}',
     'html body button.pt-auth-reset:hover{color:#93c5fd}',
     '',
+    '/* score breakdown / retry UI (shared by menu and tests) */',
+    'html body .pt-stats-card{background:var(--card,#fff);border:1px solid var(--line,#d9deea);border-radius:12px;padding:12px;margin-top:12px;color:var(--tx,#1b2133)}',
+    'html body .pt-stats-title{font-weight:800;font-size:.95rem;margin:0 0 8px;color:var(--tx,#1b2133)}',
+    'html body .pt-stats-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line,#d9deea);font-size:.82rem;line-height:1.4}',
+    'html body .pt-stats-row:first-of-type{border-top:0}',
+    'html body .pt-stats-row.pt-stats-overall{background:rgba(59,130,246,.06);border-radius:8px;padding:9px 8px;border-top:0}',
+    'html body .pt-stats-name{font-weight:700;flex:0 0 auto;min-width:112px;color:var(--tx,#1b2133)}',
+    'html body .pt-stats-bar{flex:1 1 90px;min-width:70px;height:7px;background:var(--line,#d9deea);border-radius:99px;overflow:hidden;display:block}',
+    'html body .pt-stats-bar i{display:block;height:100%;background:#3b82f6;border-radius:99px}',
+    'html body .pt-stats-num{color:var(--mut,#5b6478);white-space:nowrap;font-variant-numeric:tabular-nums}',
+    'html body .pt-stats-pct{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--tx,#1b2133)}',
+    'html body .pt-stats-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.75rem;font-weight:700;white-space:nowrap;border:1px solid transparent}',
+    'html body .pt-stats-badge.ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#15803d}',
+    'html body .pt-stats-badge.bad{background:rgba(239,68,68,.11);border-color:rgba(239,68,68,.32);color:#b91c1c}',
+    'html body button.pt-stats-btn{margin-left:auto;padding:6px 11px;border-radius:999px;border:1px solid #3b82f6;background:#3b82f6;color:#fff;font-size:.76rem;font-weight:700;white-space:nowrap;text-align:center;cursor:pointer;font-family:inherit}',
+    'html body button.pt-stats-btn:hover{background:#2563eb;border-color:#2563eb}',
+    'html body button.pt-stats-btn.ghost{background:transparent;color:#3b82f6}',
+    'html body button.pt-stats-btn:disabled{opacity:.55;cursor:default;border-color:var(--line,#d9deea);background:transparent;color:var(--mut,#5b6478)}',
+    'html body .pt-stats-mastered{margin-left:auto;color:#15803d;font-size:.78rem;font-weight:700;white-space:nowrap}',
+    'html body .pt-stats-empty{color:var(--mut,#5b6478);font-size:.85rem;margin:4px 0 0}',
+    'html body button.pt-stats-grade{padding:10px 12px;border-radius:9px;border:1px solid var(--line,#d9deea);background:var(--card,#fff);color:var(--tx,#1b2133);font-size:.85rem;font-weight:700;text-align:center;cursor:pointer;flex:1 1 auto;font-family:inherit}',
+    'html body button.pt-stats-grade:hover{border-color:#3b82f6}',
+    'html body button.pt-stats-grade.correct.on{border-color:#22c55e;background:rgba(34,197,94,.14);color:#15803d}',
+    'html body button.pt-stats-grade.incorrect.on{border-color:#ef4444;background:rgba(239,68,68,.12);color:#b91c1c}',
+    'html body .pt-stats-retry-banner{position:sticky;top:56px;z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#131a2a;border:1px solid #3b82f6;color:#e2e8f0;border-radius:12px;padding:10px 13px;margin:0 0 14px;font-size:.88rem;box-shadow:0 6px 18px rgba(0,0,0,.18)}',
+    'html body .pt-stats-retry-banner strong{color:#93c5fd}',
+    'html body .pt-stats-retry-banner button{margin-left:auto;background:#3b82f6;color:#fff;border:1px solid #3b82f6;border-radius:999px;padding:7px 12px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}',
+    'html body #pt-stats-modal{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,15,25,.72);color:#e2e8f0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}',
+    'html body #pt-stats-modal .pt-stats-modal-card{width:min(560px,100%);max-height:min(86vh,760px);overflow:auto;background:#131a2a;border:1px solid #263148;border-radius:14px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.6)}',
+    'html body #pt-stats-modal .pt-stats-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}',
+    'html body #pt-stats-modal .pt-stats-modal-head h2{margin:0;font-size:1.15rem;color:#f8fafc}',
+    'html body #pt-stats-modal button.pt-stats-close{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:999px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:.8rem}',
+    'html body #pt-stats-modal .pt-stats-card{background:#0f1523;border-color:#263148;color:#e2e8f0}',
+    'html body #pt-stats-modal .pt-stats-name,html body #pt-stats-modal .pt-stats-pct,html body #pt-stats-modal .pt-stats-title{color:#e2e8f0}',
+    'html body #pt-stats-modal .pt-stats-row{border-color:#263148}',
+    'html body #pt-stats-modal .pt-stats-num{color:#94a3b8}',
+    '@media (max-width:520px){html body .pt-stats-name{min-width:100%}html body button.pt-stats-btn{margin-left:0}html body .pt-stats-mastered{margin-left:0}}',
+    '',
     '/* admin / user management modal */',
     'html body #pt-auth-admin-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,15,25,.8);color:#f1f5f9;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}',
     'html body #pt-auth-admin-modal .pt-auth-admin-card{width:min(680px,100%);max-height:min(86vh,760px);overflow:auto;background:#131a2a;border:1px solid #263148;border-radius:14px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.6)}',
@@ -104,6 +146,8 @@ function injectCSS(){
     'html body #pt-auth-admin-modal table.pt-auth-table th,html body #pt-auth-admin-modal table.pt-auth-table td{text-align:left;padding:9px 10px;border-bottom:1px solid #263148;white-space:nowrap;color:#cbd5e1}',
     'html body #pt-auth-admin-modal table.pt-auth-table th{color:#94a3b8;font-weight:600;background:#0f1523}',
     'html body #pt-auth-admin-modal table.pt-auth-table tr:last-child td{border-bottom:0}',
+    'html body #pt-auth-admin-modal .pt-auth-password{display:inline-block;padding:3px 8px;border-radius:6px;background:#0b0f19;border:1px solid #334155;color:#bfdbfe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem}',
+    'html body #pt-auth-admin-modal .pt-auth-muted{color:#64748b}',
     'html body #pt-auth-admin-modal table.pt-auth-table td.pt-auth-actions{display:flex;gap:6px}',
     '@media (max-width:520px){html body #pt-auth-gate .pt-auth-card{padding:22px}html body #pt-auth-userbar{gap:8px;padding:8px 12px}html body #pt-auth-userbar .pt-auth-brand{display:none}html body #pt-auth-admin-modal .pt-auth-admin-card{padding:16px}}'
   ];
@@ -240,7 +284,7 @@ async function handleCreate(form){
   if(pw!==confirm){gateError('Passwords do not match.');return}
   if(!pendingUser)return;
   await sb('app_users?username=eq.'+enc(pendingUser.username),{
-    method:'PATCH',body:JSON.stringify({password:pw}),headers:{'Prefer':'return=minimal'}
+    method:'PATCH',body:JSON.stringify({password:pw,created_at:new Date().toISOString()}),headers:{'Prefer':'return=minimal'}
   });
   saveSession(pendingUser.username,pendingUser.role);
   unlock(session);
@@ -265,6 +309,18 @@ function setSync(text,warn){
   ensureBar();
   var el=bar.querySelector('#pt-auth-sync');
   if(el){el.textContent=text;el.classList.toggle('pt-auth-warn',!!warn)}
+}
+function addBarButton(opts){
+  ensureBar();
+  opts=opts||{};
+  var b=document.createElement('button');
+  b.type='button';b.className='pt-auth-btn';
+  if(opts.id)b.id=opts.id;
+  b.textContent=opts.label||'';
+  if(typeof opts.onClick==='function')b.onclick=opts.onClick;
+  var sync=bar.querySelector('#pt-auth-sync');
+  bar.insertBefore(b,sync||null);
+  return b;
 }
 function unlock(s){
   session=s||getSession();
@@ -320,8 +376,10 @@ async function refreshAdmin(){
     var rows=await sb('app_users?select=username,role,password,created_at&order=created_at.asc');
     if(!body||!body.isConnected)return;
     body.innerHTML=(rows||[]).map(function(r){
+      var hidePassword=(r.role==='admin'||r.username==='admin');
       return '<tr><td><b>@'+esc(r.username)+'</b></td><td>'+esc(r.role||'student')+'</td>'+
-        '<td>'+(r.password?'Set':'Not set')+'</td><td>'+esc((r.created_at||'').slice(0,10))+'</td>'+
+        '<td>'+(hidePassword?'<span class="pt-auth-muted">Hidden</span>':(r.password?'<code class="pt-auth-password">'+esc(r.password)+'</code>':'<span class="pt-auth-muted">Not set</span>'))+'</td>'+
+        '<td>'+(r.password&&r.created_at?esc(r.created_at.slice(0,10)):'<span class="pt-auth-muted">\u2014</span>')+'</td>'+
         '<td class="pt-auth-actions"><button type="button" data-act="reset" data-user="'+esc(r.username)+'">Reset Password</button>'+
         (r.role==='student'?'<button type="button" data-act="delete" data-user="'+esc(r.username)+'">Delete User</button>':'')+'</td></tr>';
     }).join('');
@@ -343,7 +401,7 @@ function openAdmin(){
     '<p class="pt-auth-admin-msg" id="pt-auth-admin-msg"></p>'+
     '<form class="pt-auth-add" id="pt-auth-add-form"><input class="pt-auth-input" id="pt-auth-new-user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="New username">'+
     '<span class="pt-auth-role-tag">role: student</span><button class="pt-auth-btn-small" type="submit">Add New User</button></form>'+
-    '<div class="pt-auth-table-wrap"><table class="pt-auth-table"><thead><tr><th>User</th><th>Role</th><th>Password</th><th>Joined</th><th>Actions</th></tr></thead>'+
+    '<div class="pt-auth-table-wrap"><table class="pt-auth-table"><thead><tr><th>User</th><th>Role</th><th>Password</th><th>Password Set</th><th>Actions</th></tr></thead>'+
     '<tbody id="pt-auth-admin-rows"><tr><td colspan="5">Loading\u2026</td></tr></tbody></table></div></div>';
   document.body.appendChild(adminModal);
   adminModal.addEventListener('click',function(e){if(e.target===adminModal)closeAdmin()});
@@ -382,7 +440,7 @@ function openAdmin(){
   refreshAdmin();
 }
 
-/* ---------- progress sync ---------- */
+/* ---------- progress sync + score statistics ---------- */
 
 function pKey(user,testId){return 'pt_progress_'+user+'_'+testId}
 function pRead(user,testId){
@@ -400,34 +458,86 @@ function asMap(v){
   if(Array.isArray(v)){var o={};v.forEach(function(x,i){o[i]=x});return o}
   return typeof v==='object'?v:{};
 }
+/* __stats is derived data: never feed it back into question inputs. */
+function stripStats(v){
+  var src=asMap(v),out={};
+  Object.keys(src).forEach(function(k){if(k!=='__stats')out[k]=src[k]});
+  return out;
+}
 function countAnswers(v){
-  if(!v)return 0;
-  if(Array.isArray(v))return v.length;
-  return Object.keys(v).length;
+  var src=asMap(v),n=0;
+  Object.keys(src).forEach(function(k){if(k!=='__stats')n++});
+  return n;
+}
+function gradeAnswer(q,val){
+  if(val==null||val==='')return null;
+  if(q.written){
+    if(val==='CORRECT'||val==='gotit')return 'correct';
+    if(val==='INCORRECT'||val==='missit')return 'incorrect';
+    return null;
+  }
+  if(!q.correct)return null;
+  return val===q.correct?'correct':'incorrect';
+}
+function computeStats(catalog,answers){
+  if(!catalog||!catalog.questions)return null;
+  var cats=catalog.categories||[];
+  var overall={answered:0,correct:0,incorrect:0,total:catalog.questions.length};
+  var per={};
+  cats.forEach(function(c){per[c.id]={answered:0,correct:0,incorrect:0,total:0}});
+  catalog.questions.forEach(function(q){
+    var g=gradeAnswer(q,answers[q.id]);
+    if(!g)return;
+    overall[g]++;overall.answered++;
+    (q.cats||[]).forEach(function(id){var p=per[id];if(p){p[g]++;p.answered++}});
+  });
+  cats.forEach(function(c){
+    catalog.questions.forEach(function(q){if((q.cats||[]).indexOf(c.id)>=0)per[c.id].total++});
+  });
+  return {overall:overall,subcategories:cats.map(function(c){
+    var p=per[c.id];p.id=c.id;p.label=c.label;return p;
+  })};
 }
 function currentUser(){return session?session.username:''}
 
+function filterKey(testId){return 'pt_launch_filter_'+testId}
+function setLaunchFilter(testId,filter){
+  try{sessionStorage.setItem(filterKey(testId),JSON.stringify(filter||{}))}catch(e){}
+}
+function takeLaunchFilter(testId){
+  try{
+    var raw=sessionStorage.getItem(filterKey(testId));
+    if(!raw)return null;
+    sessionStorage.removeItem(filterKey(testId));
+    return JSON.parse(raw);
+  }catch(e){return null}
+}
+
 function createProgress(cfg){
-  var testId=cfg.testId,timer=null;
+  var testId=cfg.testId,timer=null,catalog=cfg.catalog||null;
   function snapshot(){
     var s=cfg.get()||{};
-    return {answers:asMap(s.answers),flags:asMap(s.flags)};
+    return {answers:stripStats(s.answers),flags:asMap(s.flags)};
   }
-  function persist(){
-    var s=snapshot();
-    pWrite(currentUser(),testId,{answers:s.answers,flags:s.flags,updated_at:new Date().toISOString()});
+  function payload(){
+    var s=snapshot(),answers={};
+    Object.keys(s.answers).forEach(function(k){answers[k]=s.answers[k]});
+    var stats=computeStats(catalog,s.answers);
+    if(stats)answers.__stats=stats;
+    return {answers:answers,flags:s.flags,updated_at:new Date().toISOString()};
   }
+  function persist(){pWrite(currentUser(),testId,payload())}
   function restoreLocal(){
     var raw=pRead(currentUser(),testId)||{};
-    cfg.set({answers:asMap(raw.answers),flags:asMap(raw.flags)});
+    cfg.set({answers:stripStats(raw.answers),flags:asMap(raw.flags)});
   }
   async function loadCloud(){
     if(!currentUser())return;
     setSync(SAVED);
     try{
-      var rows=await sb('user_progress?username=eq.'+enc(currentUser())+'&test_id=eq.'+enc(testId)+'&select=*');
-      if(rows&&rows.length){
-        cfg.set({answers:asMap(rows[0].answers),flags:asMap(rows[0].flags)});
+      var list=await sb('user_progress?username=eq.'+enc(currentUser())+'&test_id=eq.'+enc(testId)+'&select=*');
+      if(list&&list.length){
+        cfg.set({answers:stripStats(list[0].answers),flags:asMap(list[0].flags)});
         persist();
       }
       setSync(SAVED);
@@ -435,11 +545,11 @@ function createProgress(cfg){
   }
   async function push(){
     if(!currentUser())return;
-    var s=snapshot();
+    var p=payload();
     try{
       await sb('user_progress',{
         method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-        body:JSON.stringify({username:currentUser(),test_id:testId,answers:s.answers,flags:s.flags,updated_at:new Date().toISOString()})
+        body:JSON.stringify({username:currentUser(),test_id:testId,answers:p.answers,flags:p.flags,updated_at:p.updated_at})
       });
       setSync(SAVED);
     }catch(e){setSync('Offline \u2014 saved locally',true)}
@@ -450,22 +560,99 @@ function createProgress(cfg){
     if(timer)clearTimeout(timer);
     timer=setTimeout(function(){timer=null;push()},600);
   }
+  function flush(){
+    if(timer){clearTimeout(timer);timer=null}
+    persist();setSync(SYNCING);
+    return push();
+  }
   function reset(){
     cfg.set({answers:{},flags:{}});
-    changed();
+    return flush();
   }
-  return {restoreLocal:restoreLocal,loadCloud:loadCloud,changed:changed,push:push,reset:reset,
+  function clearIncorrect(scope){
+    var s=snapshot(),removed=0;
+    (catalog&&catalog.questions?catalog.questions:[]).forEach(function(q){
+      if(scope!=='all'&&(q.cats||[]).indexOf(scope)<0)return;
+      if(gradeAnswer(q,s.answers[q.id])==='incorrect'){delete s.answers[q.id];removed++}
+    });
+    cfg.set({answers:s.answers,flags:s.flags});
+    return flush();
+  }
+  return {
+    restoreLocal:restoreLocal,loadCloud:loadCloud,changed:changed,push:push,
+    reset:reset,clearIncorrect:clearIncorrect,flush:flush,
     answers:function(){return snapshot().answers},flags:function(){return snapshot().flags},
-    count:function(){return countAnswers(snapshot().answers)}};
+    stats:function(){return computeStats(catalog,snapshot().answers)},
+    catalog:function(){return catalog},
+    count:function(){return countAnswers(snapshot().answers)}
+  };
 }
-async function counts(){
+async function rows(){
   if(!currentUser())return {};
   try{
-    var rows=await sb('user_progress?username=eq.'+enc(currentUser())+'&select=test_id,answers,updated_at');
+    var list=await sb('user_progress?username=eq.'+enc(currentUser())+'&select=test_id,answers,updated_at');
     var out={};
-    (rows||[]).forEach(function(r){out[r.test_id]=countAnswers(r.answers)});
+    (list||[]).forEach(function(r){out[r.test_id]=asMap(r.answers)});
     return out;
   }catch(e){return {}}
+}
+async function counts(){
+  var all=await rows(),out={};
+  Object.keys(all).forEach(function(k){out[k]=countAnswers(all[k])});
+  return out;
+}
+
+/* ---------- shared score markup ---------- */
+
+function statsPct(s){return s&&s.answered?Math.round(s.correct/s.answered*100):0}
+function retryButton(scope,n,mastered,label){
+  if(n>0)return '<button type="button" class="pt-stats-btn" data-scope="'+esc(scope)+'">'+(label||('Retry Incorrect ('+n+')'))+'</button>';
+  if(mastered)return '<span class="pt-stats-mastered">100% Mastered \u2713</span>';
+  return '';
+}
+function statsHTML(stats,opts){
+  if(!stats||!stats.overall)return '<p class="pt-stats-empty">No answers saved yet \u2014 start a test to see your breakdown.</p>';
+  opts=opts||{};
+  var o=stats.overall;
+  var h='<div class="pt-stats-row pt-stats-overall"><span class="pt-stats-name">Overall</span>'+
+    '<span class="pt-stats-num">'+o.answered+' / '+o.total+' Answered</span>'+
+    '<span class="pt-stats-badge ok">Correct \u2713 '+o.correct+'</span>'+
+    '<span class="pt-stats-badge bad">Incorrect \u2717 '+o.incorrect+'</span>'+
+    '<span class="pt-stats-pct">'+statsPct(o)+'%</span>'+
+    retryButton('all',o.incorrect,o.answered===o.total,
+      opts.menu?('Retry All Incorrect ('+o.incorrect+') \u2192'):null)+'</div>';
+  (stats.subcategories||[]).forEach(function(s){
+    var w=s.total?Math.round(s.answered/s.total*100):0;
+    h+='<div class="pt-stats-row"><span class="pt-stats-name">'+esc(s.label)+'</span>'+
+      '<span class="pt-stats-bar"><i style="width:'+w+'%"></i></span>'+
+      '<span class="pt-stats-num">'+s.answered+' / '+s.total+'</span>'+
+      '<span class="pt-stats-badge ok">Correct \u2713 '+s.correct+'</span>'+
+      '<span class="pt-stats-badge bad">Incorrect \u2717 '+s.incorrect+'</span>'+
+      '<span class="pt-stats-pct">'+statsPct(s)+'%</span>'+
+      retryButton(s.id,s.incorrect,s.answered===s.total)+'</div>';
+  });
+  return h;
+}
+function closeStatsModal(){
+  var m=document.getElementById('pt-stats-modal');
+  if(m)m.remove();
+  if(window.__ptStatsKeyHandler){document.removeEventListener('keydown',window.__ptStatsKeyHandler);window.__ptStatsKeyHandler=null}
+}
+function openStatsModal(stats,onRetry,title){
+  closeStatsModal();
+  var m=document.createElement('div');m.id='pt-stats-modal';
+  m.innerHTML='<div class="pt-stats-modal-card"><div class="pt-stats-modal-head"><h2>'+esc(title||'Score Summary')+'</h2>'+
+    '<button type="button" class="pt-stats-close">Close</button></div>'+
+    '<div class="pt-stats-card"><p class="pt-stats-title">Correct / Incorrect / % by subcategory</p>'+statsHTML(stats)+'</div></div>';
+  document.body.appendChild(m);
+  function close(){closeStatsModal()}
+  m.addEventListener('click',function(e){if(e.target===m||e.target.closest('.pt-stats-close'))close()});
+  m.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-scope]');
+    if(b&&typeof onRetry==='function'){close();onRetry(b.dataset.scope)}
+  });
+  window.__ptStatsKeyHandler=function(e){if(e.key==='Escape')close()};
+  document.addEventListener('keydown',window.__ptStatsKeyHandler);
 }
 
 var PTAuth={
@@ -481,10 +668,13 @@ var PTAuth={
   },
   session:function(){return session?{username:session.username,role:session.role}:null},
   setSync:setSync,
+  addBarButton:addBarButton,
   lock:lock,
   api:sb
 };
-var PTProgress={create:createProgress,counts:counts,countAnswers:countAnswers};
+var PTProgress={create:createProgress,rows:rows,counts:counts,countAnswers:countAnswers,
+  setLaunchFilter:setLaunchFilter,takeLaunchFilter:takeLaunchFilter,computeStats:computeStats,
+  statsHTML:statsHTML,openStatsModal:openStatsModal,closeStatsModal:closeStatsModal};
 
 window.PTAuth=PTAuth;
 window.PTProgress=PTProgress;
