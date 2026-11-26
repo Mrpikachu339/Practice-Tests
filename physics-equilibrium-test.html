@@ -53,19 +53,50 @@ const ML=`<p><a href='index.html'>← All tests</a></p>`;
 const app=document.getElementById('app');
 let queue=[],i=0,answered=false,picked=null,shuffle=false,revealed=false,modeType='all';
 /* Per-user answers and flags; cloud-backed with a local offline copy. */
-let answers={},flags={},retryScope=null,retryLabel='',retryCount=0;
+let answers={},flags={},lastQuestionId='',retryScope=null,retryLabel='',retryCount=0;
+const FORMATS=[{id:'mcq',label:'Multiple Choice'},{id:'written',label:'Written Response'}];
 const CATS=[{id:'multiple-choice',label:'Multiple Choice'},{id:'written-response',label:'Written Response'}];
-const CATALOG={categories:CATS,questions:Q.map(q=>({
-  id:q.id,cats:[q.t==='mc'?'multiple-choice':'written-response'],
-  correct:q.t==='mc'?q.a:null,written:q.t!=='mc'
-}))};
+const TOPICS=[
+  {id:'translational',label:'Translational Equilibrium (Forces)'},
+  {id:'rotational',label:'Rotational Equilibrium & Torque'},
+  {id:'center-of-gravity',label:'Center of Gravity & Beams/Ladders'},
+  {id:'mixed',label:'Mixed / Multi-Concept Problems'}
+];
+/* The source questions are images, so sub-topics are classified from the
+   worked solutions that ship with each question. */
+function topicFor(q){
+  if(q.t==='w'){
+    return ({W1:'center-of-gravity',W2:'translational',W3:'mixed',W4:'center-of-gravity',
+      W5:'center-of-gravity',W6:'center-of-gravity',W7:'center-of-gravity',
+      W8:'translational',W9:'mixed',W10:'mixed',W11:'translational'}[q.id]||'mixed');
+  }
+  const n=parseInt(q.id.slice(1),10);
+  if(n<=10||n===30)return 'translational';
+  if(n===13||n===15||n===16||n===20)return 'rotational';
+  if(n===14||n===32)return 'mixed';
+  return 'center-of-gravity';
+}
+const CATALOG={
+  categories:CATS,formats:FORMATS,topics:TOPICS,
+  questions:Q.map(q=>({
+    id:q.id,cats:[q.t==='mc'?'multiple-choice':'written-response'],
+    formats:[q.t==='mc'?'mcq':'written'],topics:[topicFor(q)],
+    correct:q.t==='mc'?q.a:null,written:q.t!=='mc'
+  }))
+};
+const QA={};CATALOG.questions.forEach(x=>QA[x.id]=x);
 const PT=PTProgress.create({testId:'physics-equilibrium',total:Q.length,catalog:CATALOG,
-  get:()=>({answers,flags}),
-  set:s=>{answers=s.answers||{};flags=s.flags||{}}
+  get:()=>({answers,flags,lastQuestionId}),
+  set:s=>{answers=s.answers||{};flags=s.flags||{};lastQuestionId=s.lastQuestionId||''}
 });
 function hasAnswer(id){return Object.prototype.hasOwnProperty.call(answers,id)}
-function catFor(q){return q.t==='mc'?'multiple-choice':'written-response'}
-function labelFor(scope){return scope==='all'?'Overall':((CATS.find(c=>c.id===scope)||{}).label||scope)}
+function inScope(q,scope){return PTProgress.scopeMatches(QA[q.id],scope)}
+function labelFor(scope){
+  if(scope==='all')return 'Overall';
+  if(scope.indexOf('format:')===0)return (FORMATS.find(c=>c.id===scope.slice(7))||{}).label||scope;
+  if(scope.indexOf('topic:')===0)return (TOPICS.find(c=>c.id===scope.slice(6))||{}).label||scope;
+  return (CATS.find(c=>c.id===scope)||{}).label||scope;
+}
 function gradeOf(q){
   const v=answers[q.id];
   if(q.t==='mc')return !hasAnswer(q.id)?null:(v===q.a?'correct':'incorrect');
@@ -74,7 +105,7 @@ function gradeOf(q){
   return null;
 }
 function rightCount(list){return list.filter(q=>gradeOf(q)==='correct').length}
-function missedIds(scope){return Q.filter(q=>(scope==='all'||catFor(q)===scope)&&gradeOf(q)==='incorrect').map(q=>q.id)}
+function missedIds(scope){return Q.filter(q=>inScope(q,scope)&&gradeOf(q)==='incorrect').map(q=>q.id)}
 function wireStats(root){root.querySelectorAll('button[data-scope]').forEach(b=>b.onclick=()=>startRetry(b.dataset.scope))}
 function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function fmt(s){return esc(s).replace(/\s+(?=[a-c]\)\s)/g,'<br><br>')}
@@ -164,7 +195,7 @@ function pick(l,restored){
   if(answered&&!restored)return;
   answered=true;picked=l;rm();
   const q=queue[i],right=l===q.a;
-  if(!restored){answers[q.id]=l;PT.changed()}
+  if(!restored){answers[q.id]=l;lastQuestionId=q.id;PT.changed()}
   app.querySelectorAll('.choices button').forEach(b=>{
     b.disabled=true;
     if(b.dataset.l===q.a)b.classList.add('ok');
@@ -194,7 +225,7 @@ function reveal(){
   if(g)document.getElementById('next').onclick=next;
   document.querySelectorAll('[data-grade]').forEach(b=>b.onclick=()=>{
     const val=b.dataset.grade;
-    if(answers[q.id]!==val){answers[q.id]=val;PT.changed()}
+    if(answers[q.id]!==val){answers[q.id]=val;lastQuestionId=q.id;PT.changed()}
     document.querySelectorAll('[data-grade]').forEach(x=>x.classList.toggle('on',x===b));
     const ls=document.getElementById('liveScore');if(ls)ls.textContent='Score: '+rightCount(queue);
     if(wrap.style.display==='none'){wrap.style.display='';document.getElementById('next').onclick=next}
@@ -232,7 +263,32 @@ function showAll(){
 }
 function applyLaunchFilter(){
   const f=PTProgress.takeLaunchFilter('physics-equilibrium');
-  if(f&&f.mode==='incorrect')startRetry(f.subcategoryId||'all');
+  if(f&&f.mode==='incorrect'){startRetry(f.subcategoryId||f.scope||'all');return true}
+  return false;
+}
+function resumeQuestion(){
+  const next=Q.find(q=>gradeOf(q)==null);
+  if(next)return next;
+  const st=PT.stats()||{},id=st.lastQuestionId;
+  return Q.find(q=>q.id===id)||Q[Q.length-1];
+}
+function highlightResume(id){
+  const card=document.querySelector('#app .card');
+  if(!card)return;
+  if(id)card.dataset.resumeTarget=id;
+  card.classList.add('pt-resume-highlight');
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>card.classList.remove('pt-resume-highlight'),2000);
+}
+function applyContinue(){
+  if(!PTProgress.takeContinue('physics-equilibrium'))return;
+  const target=resumeQuestion();
+  if(!target)return;
+  retryScope=null;retryCount=0;retryLabel='';shuffle=false;
+  queue=Q.slice();
+  const at=queue.findIndex(q=>q.id===target.id);
+  i=at<0?0:at;
+  show();highlightResume(target.id);
 }
 document.addEventListener('keydown',e=>{
   if(document.getElementById('pt-auth-gate')||document.getElementById('pt-auth-admin-modal')||document.getElementById('pt-stats-modal')||document.getElementById('zm'))return;
@@ -242,8 +298,8 @@ document.addEventListener('keydown',e=>{
 });
 
 PTAuth.init({
-  onUnlock:function(){PT.restoreLocal();PT.loadCloud().then(function(){home();applyLaunchFilter()})},
-  onLock:function(){answers={};flags={};retryScope=null;retryCount=0;retryLabel=''}
+  onUnlock:function(){PT.restoreLocal();PT.loadCloud().then(function(){home();if(!applyLaunchFilter())applyContinue()})},
+  onLock:function(){answers={};flags={};lastQuestionId='';retryScope=null;retryCount=0;retryLabel=''}
 });
 PTAuth.addBarButton({id:'pt-score-btn',label:'Score Summary',onClick:function(){
   PTProgress.openStatsModal(PT.stats(),startRetry,'Physics 12 \u2014 Score Summary');

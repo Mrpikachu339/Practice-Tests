@@ -16,10 +16,17 @@ h1{font-size:1.7rem;margin:0 0 4px}
 .t{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .t:hover{border-color:var(--pri)}
 .t>b{font-size:1.1rem}
+.t>b a{color:inherit;text-decoration:none}
+.t>b a:hover{text-decoration:underline}
 .t>span{display:block;color:var(--mut);margin-top:4px;font-size:.92rem}
 .t>i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-top:8px}
-.t>a.pt-stats-start{display:inline-block;color:var(--pri);text-decoration:none;font-weight:600;margin-top:8px;font-size:.92rem}
-.t>a.pt-stats-start:hover{text-decoration:underline}
+.t .t-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+.t a.pt-open,.t button.pt-continue{display:inline-block;border:1px solid var(--pri);border-radius:999px;padding:7px 13px;font-size:.86rem;font-weight:700;text-decoration:none;cursor:pointer;font-family:inherit;white-space:nowrap}
+.t a.pt-open{color:var(--pri);background:transparent}
+.t a.pt-open:hover{background:rgba(59,130,246,.10)}
+.t button.pt-continue{color:#fff;background:var(--pri)}
+.t button.pt-continue:hover{filter:brightness(.94)}
+.t .pt-last{color:var(--mut);font-size:.78rem}
 .soon{border-style:dashed;color:var(--mut);opacity:.7}
 </style>
 </head>
@@ -37,11 +44,16 @@ const TESTS=[
  {title:'Biology 12 — Digestion, Circulation & Respiration Practice Test',desc:'Digestion, Circulation & Respiration • 180 Questions',href:'biology-12-digestion-circulation-respiration-test.html',testId:'biology-12-digestion-circulation-respiration',total:180}
 ];
 const g=document.getElementById('g');
+function qLabel(id){
+  if(!id)return '';
+  return /^Q\d+$/.test(id)?id:(id.charAt(0)==='W'?'Written '+id.slice(1):id);
+}
 TESTS.forEach(t=>{
   const card=document.createElement('div');card.className='t';
-  card.innerHTML='<b></b><span></span><a class="pt-stats-start" href="'+t.href+'">Start Practice Test →</a>'+
+  card.innerHTML='<b><a href="'+t.href+'"></a></b><span></span>'+
+    '<div class="t-actions"><a class="pt-open" href="'+t.href+'">Open Test →</a><span class="pt-continue-slot"></span></div>'+
     '<div class="pt-stats-card" data-stats></div>';
-  card.querySelector('b').textContent=t.title;
+  card.querySelector('b a').textContent=t.title;
   card.querySelector('span').textContent=t.desc;
   g.appendChild(card);t.el=card;
   const box=card.querySelector('[data-stats]');
@@ -59,10 +71,27 @@ async function refreshProgress(){
   TESTS.forEach(t=>{
     const box=t.el&&t.el.querySelector('[data-stats]');
     if(!box)return;
-    const row=all[t.testId];
-    const stats=row&&row.__stats;
+    const row=all[t.testId],stats=row&&row.__stats;
     box.innerHTML=stats?PTProgress.statsHTML(stats,{menu:true}):
       '<p class="pt-stats-empty">No progress yet — start the test to track Correct / Incorrect / %.</p>';
+
+    const slot=t.el.querySelector('.pt-continue-slot');slot.innerHTML='';
+    const o=stats&&stats.overall;
+    const answered=o?o.answered:PTProgress.countAnswers(row);
+    const total=o?o.total:t.total;
+    if(answered>0&&answered<total){
+      const nextId=stats&&(stats.nextQuestionId||stats.lastQuestionId);
+      const b=document.createElement('button');
+      b.type='button';b.className='pt-continue';
+      b.textContent='Continue Where You Left Off'+(nextId?' ('+qLabel(nextId)+')':'')+' →';
+      b.onclick=function(){PTProgress.setContinue(t.testId);location.href=t.href};
+      slot.appendChild(b);
+      if(stats&&stats.lastQuestionId){
+        const last=document.createElement('span');last.className='pt-last';
+        last.textContent='Last worked on: '+qLabel(stats.lastQuestionId);
+        slot.appendChild(last);
+      }
+    }
   });
 }
 PTAuth.init({onUnlock:refreshProgress,onLock:refreshProgress});

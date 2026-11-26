@@ -90,6 +90,7 @@ function injectCSS(){
     '/* score breakdown / retry UI (shared by menu and tests) */',
     'html body .pt-stats-card{background:var(--card,#fff);border:1px solid var(--line,#d9deea);border-radius:12px;padding:12px;margin-top:12px;color:var(--tx,#1b2133)}',
     'html body .pt-stats-title{font-weight:800;font-size:.95rem;margin:0 0 8px;color:var(--tx,#1b2133)}',
+    'html body .pt-stats-section{font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--mut,#5b6478);margin:12px 0 2px}',
     'html body .pt-stats-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line,#d9deea);font-size:.82rem;line-height:1.4}',
     'html body .pt-stats-row:first-of-type{border-top:0}',
     'html body .pt-stats-row.pt-stats-overall{background:rgba(59,130,246,.06);border-radius:8px;padding:9px 8px;border-top:0}',
@@ -114,6 +115,8 @@ function injectCSS(){
     'html body .pt-stats-retry-banner{position:sticky;top:56px;z-index:60;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#131a2a;border:1px solid #3b82f6;color:#e2e8f0;border-radius:12px;padding:10px 13px;margin:0 0 14px;font-size:.88rem;box-shadow:0 6px 18px rgba(0,0,0,.18)}',
     'html body .pt-stats-retry-banner strong{color:#93c5fd}',
     'html body .pt-stats-retry-banner button{margin-left:auto;background:#3b82f6;color:#fff;border:1px solid #3b82f6;border-radius:999px;padding:7px 12px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}',
+    'html body .pt-resume-highlight{animation:ptResumePulse 2s ease-out;border-radius:14px}',
+    '@keyframes ptResumePulse{0%{box-shadow:0 0 0 0 rgba(59,130,246,.85)}45%{box-shadow:0 0 0 9px rgba(59,130,246,.25)}100%{box-shadow:0 0 0 0 rgba(59,130,246,0)}}',
     'html body #pt-stats-modal{position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,15,25,.72);color:#e2e8f0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}',
     'html body #pt-stats-modal .pt-stats-modal-card{width:min(560px,100%);max-height:min(86vh,760px);overflow:auto;background:#131a2a;border:1px solid #263148;border-radius:14px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.6)}',
     'html body #pt-stats-modal .pt-stats-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}',
@@ -121,6 +124,7 @@ function injectCSS(){
     'html body #pt-stats-modal button.pt-stats-close{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:999px;padding:6px 11px;cursor:pointer;font-family:inherit;font-size:.8rem}',
     'html body #pt-stats-modal .pt-stats-card{background:#0f1523;border-color:#263148;color:#e2e8f0}',
     'html body #pt-stats-modal .pt-stats-name,html body #pt-stats-modal .pt-stats-pct,html body #pt-stats-modal .pt-stats-title{color:#e2e8f0}',
+    'html body #pt-stats-modal .pt-stats-section{color:#93c5fd}',
     'html body #pt-stats-modal .pt-stats-row{border-color:#263148}',
     'html body #pt-stats-modal .pt-stats-num{color:#94a3b8}',
     '@media (max-width:520px){html body .pt-stats-name{min-width:100%}html body button.pt-stats-btn{margin-left:0}html body .pt-stats-mastered{margin-left:0}}',
@@ -479,24 +483,42 @@ function gradeAnswer(q,val){
   if(!q.correct)return null;
   return val===q.correct?'correct':'incorrect';
 }
+function qFormats(q){return q.formats||(q.format?[q.format]:[])}
+function qTopics(q){return q.topics||(q.topic?[q.topic]:[])}
+function scopeMatches(q,scope){
+  if(!q)return false;
+  if(!scope||scope==='all')return true;
+  if(scope.indexOf('format:')===0)return qFormats(q).indexOf(scope.slice(7))>=0;
+  if(scope.indexOf('topic:')===0)return qTopics(q).indexOf(scope.slice(6))>=0;
+  return (q.cats||[]).indexOf(scope)>=0;
+}
 function computeStats(catalog,answers){
   if(!catalog||!catalog.questions)return null;
-  var cats=catalog.categories||[];
+  var formats=catalog.formats||[],topics=catalog.topics||[],cats=catalog.categories||[];
   var overall={answered:0,correct:0,incorrect:0,total:catalog.questions.length};
-  var per={};
-  cats.forEach(function(c){per[c.id]={answered:0,correct:0,incorrect:0,total:0}});
+  var fPer={},tPer={},cPer={};
+  formats.forEach(function(c){fPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
+  topics.forEach(function(c){tPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
+  cats.forEach(function(c){cPer[c.id]={answered:0,correct:0,incorrect:0,total:0}});
   catalog.questions.forEach(function(q){
+    qFormats(q).forEach(function(id){if(fPer[id])fPer[id].total++});
+    qTopics(q).forEach(function(id){if(tPer[id])tPer[id].total++});
+    (q.cats||[]).forEach(function(id){if(cPer[id])cPer[id].total++});
     var g=gradeAnswer(q,answers[q.id]);
     if(!g)return;
     overall[g]++;overall.answered++;
-    (q.cats||[]).forEach(function(id){var p=per[id];if(p){p[g]++;p.answered++}});
+    qFormats(q).forEach(function(id){var p=fPer[id];if(p){p[g]++;p.answered++}});
+    qTopics(q).forEach(function(id){var p=tPer[id];if(p){p[g]++;p.answered++}});
+    (q.cats||[]).forEach(function(id){var p=cPer[id];if(p){p[g]++;p.answered++}});
   });
-  cats.forEach(function(c){
-    catalog.questions.forEach(function(q){if((q.cats||[]).indexOf(c.id)>=0)per[c.id].total++});
-  });
-  return {overall:overall,subcategories:cats.map(function(c){
-    var p=per[c.id];p.id=c.id;p.label=c.label;return p;
-  })};
+  return {
+    overall:overall,
+    formats:formats.map(function(c){var p=fPer[c.id];p.id=c.id;p.label=c.label;return p}),
+    topics:topics.map(function(c){var p=tPer[c.id];p.id=c.id;p.label=c.label;return p}),
+    /* Combined legacy view: categories registered by the page (formats for
+       Physics, body systems for Biology). */
+    subcategories:cats.map(function(c){var p=cPer[c.id];p.id=c.id;p.label=c.label;return p})
+  };
 }
 function currentUser(){return session?session.username:''}
 
@@ -512,24 +534,51 @@ function takeLaunchFilter(testId){
     return JSON.parse(raw);
   }catch(e){return null}
 }
+function continueKey(testId){return 'pt_continue_'+testId}
+function setContinue(testId){
+  try{sessionStorage.setItem(continueKey(testId),'1')}catch(e){}
+}
+function takeContinue(testId){
+  try{
+    var on=sessionStorage.getItem(continueKey(testId))==='1';
+    sessionStorage.removeItem(continueKey(testId));
+    return on;
+  }catch(e){return false}
+}
+function nextQuestionId(catalog,answers){
+  if(!catalog||!catalog.questions)return '';
+  for(var i=0;i<catalog.questions.length;i++){
+    var q=catalog.questions[i];
+    if(!gradeAnswer(q,answers[q.id]))return q.id;
+  }
+  return '';
+}
 
 function createProgress(cfg){
   var testId=cfg.testId,timer=null,catalog=cfg.catalog||null;
   function snapshot(){
     var s=cfg.get()||{};
-    return {answers:stripStats(s.answers),flags:asMap(s.flags)};
+    return {answers:stripStats(s.answers),flags:asMap(s.flags),lastQuestionId:s.lastQuestionId||''};
+  }
+  function statsWithMeta(s){
+    var st=computeStats(catalog,s.answers);
+    if(st){
+      st.lastQuestionId=s.lastQuestionId||'';
+      st.nextQuestionId=nextQuestionId(catalog,s.answers);
+    }
+    return st;
   }
   function payload(){
     var s=snapshot(),answers={};
     Object.keys(s.answers).forEach(function(k){answers[k]=s.answers[k]});
-    var stats=computeStats(catalog,s.answers);
+    var stats=statsWithMeta(s);
     if(stats)answers.__stats=stats;
     return {answers:answers,flags:s.flags,updated_at:new Date().toISOString()};
   }
   function persist(){pWrite(currentUser(),testId,payload())}
   function restoreLocal(){
-    var raw=pRead(currentUser(),testId)||{};
-    cfg.set({answers:stripStats(raw.answers),flags:asMap(raw.flags)});
+    var raw=pRead(currentUser(),testId)||{},st=asMap(raw.answers).__stats||{};
+    cfg.set({answers:stripStats(raw.answers),flags:asMap(raw.flags),lastQuestionId:st.lastQuestionId||''});
   }
   async function loadCloud(){
     if(!currentUser())return;
@@ -537,7 +586,8 @@ function createProgress(cfg){
     try{
       var list=await sb('user_progress?username=eq.'+enc(currentUser())+'&test_id=eq.'+enc(testId)+'&select=*');
       if(list&&list.length){
-        cfg.set({answers:stripStats(list[0].answers),flags:asMap(list[0].flags)});
+        var saved=asMap(list[0].answers),st=asMap(saved.__stats)||{};
+        cfg.set({answers:stripStats(saved),flags:asMap(list[0].flags),lastQuestionId:st.lastQuestionId||''});
         persist();
       }
       setSync(SAVED);
@@ -572,17 +622,17 @@ function createProgress(cfg){
   function clearIncorrect(scope){
     var s=snapshot(),removed=0;
     (catalog&&catalog.questions?catalog.questions:[]).forEach(function(q){
-      if(scope!=='all'&&(q.cats||[]).indexOf(scope)<0)return;
+      if(!scopeMatches(q,scope))return;
       if(gradeAnswer(q,s.answers[q.id])==='incorrect'){delete s.answers[q.id];removed++}
     });
-    cfg.set({answers:s.answers,flags:s.flags});
+    cfg.set({answers:s.answers,flags:s.flags,lastQuestionId:s.lastQuestionId});
     return flush();
   }
   return {
     restoreLocal:restoreLocal,loadCloud:loadCloud,changed:changed,push:push,
     reset:reset,clearIncorrect:clearIncorrect,flush:flush,
     answers:function(){return snapshot().answers},flags:function(){return snapshot().flags},
-    stats:function(){return computeStats(catalog,snapshot().answers)},
+    stats:function(){return statsWithMeta(snapshot())},
     catalog:function(){return catalog},
     count:function(){return countAnswers(snapshot().answers)}
   };
@@ -610,6 +660,23 @@ function retryButton(scope,n,mastered,label){
   if(mastered)return '<span class="pt-stats-mastered">100% Mastered \u2713</span>';
   return '';
 }
+function statsRow(s,scope,zeroNote){
+  var w=s.total?Math.round(s.answered/s.total*100):0;
+  var num=s.total?(s.answered+' / '+s.total):('0 / 0'+(zeroNote?' \u00b7 '+zeroNote:' \u00b7 0 Qs'));
+  return '<div class="pt-stats-row"><span class="pt-stats-name">'+esc(s.label)+'</span>'+
+    '<span class="pt-stats-bar"><i style="width:'+w+'%"></i></span>'+
+    '<span class="pt-stats-num">'+num+'</span>'+
+    '<span class="pt-stats-badge ok">Correct \u2713 '+s.correct+'</span>'+
+    '<span class="pt-stats-badge bad">Incorrect \u2717 '+s.incorrect+'</span>'+
+    '<span class="pt-stats-pct">'+statsPct(s)+'%</span>'+
+    retryButton(scope,s.incorrect,s.total>0&&s.answered===s.total)+'</div>';
+}
+function statsSection(label,list,prefix,zeroNoteFor){
+  if(!list||!list.length)return '';
+  var h='<p class="pt-stats-section">'+esc(label)+'</p>';
+  list.forEach(function(s){h+=statsRow(s,prefix+s.id,zeroNoteFor?zeroNoteFor(s):'')});
+  return h;
+}
 function statsHTML(stats,opts){
   if(!stats||!stats.overall)return '<p class="pt-stats-empty">No answers saved yet \u2014 start a test to see your breakdown.</p>';
   opts=opts||{};
@@ -619,18 +686,18 @@ function statsHTML(stats,opts){
     '<span class="pt-stats-badge ok">Correct \u2713 '+o.correct+'</span>'+
     '<span class="pt-stats-badge bad">Incorrect \u2717 '+o.incorrect+'</span>'+
     '<span class="pt-stats-pct">'+statsPct(o)+'%</span>'+
-    retryButton('all',o.incorrect,o.answered===o.total,
+    retryButton('all',o.incorrect,o.total>0&&o.answered===o.total,
       opts.menu?('Retry All Incorrect ('+o.incorrect+') \u2192'):null)+'</div>';
-  (stats.subcategories||[]).forEach(function(s){
-    var w=s.total?Math.round(s.answered/s.total*100):0;
-    h+='<div class="pt-stats-row"><span class="pt-stats-name">'+esc(s.label)+'</span>'+
-      '<span class="pt-stats-bar"><i style="width:'+w+'%"></i></span>'+
-      '<span class="pt-stats-num">'+s.answered+' / '+s.total+'</span>'+
-      '<span class="pt-stats-badge ok">Correct \u2713 '+s.correct+'</span>'+
-      '<span class="pt-stats-badge bad">Incorrect \u2717 '+s.incorrect+'</span>'+
-      '<span class="pt-stats-pct">'+statsPct(s)+'%</span>'+
-      retryButton(s.id,s.incorrect,s.answered===s.total)+'</div>';
-  });
+  if(stats.formats&&stats.formats.length){
+    h+=statsSection('By Question Format',stats.formats,'format:',function(s){
+      return s.label==='Written Response'?'No written questions':'';
+    });
+  }
+  if(stats.topics&&stats.topics.length){
+    h+=statsSection('By System / Topic',stats.topics,'topic:');
+  }else if(stats.subcategories&&stats.subcategories.length){
+    h+=statsSection('By Subcategory',stats.subcategories,'');
+  }
   return h;
 }
 function closeStatsModal(){
@@ -643,7 +710,7 @@ function openStatsModal(stats,onRetry,title){
   var m=document.createElement('div');m.id='pt-stats-modal';
   m.innerHTML='<div class="pt-stats-modal-card"><div class="pt-stats-modal-head"><h2>'+esc(title||'Score Summary')+'</h2>'+
     '<button type="button" class="pt-stats-close">Close</button></div>'+
-    '<div class="pt-stats-card"><p class="pt-stats-title">Correct / Incorrect / % by subcategory</p>'+statsHTML(stats)+'</div></div>';
+    '<div class="pt-stats-card"><p class="pt-stats-title">Score Breakdown</p>'+statsHTML(stats)+'</div></div>';
   document.body.appendChild(m);
   function close(){closeStatsModal()}
   m.addEventListener('click',function(e){if(e.target===m||e.target.closest('.pt-stats-close'))close()});
@@ -673,8 +740,10 @@ var PTAuth={
   api:sb
 };
 var PTProgress={create:createProgress,rows:rows,counts:counts,countAnswers:countAnswers,
-  setLaunchFilter:setLaunchFilter,takeLaunchFilter:takeLaunchFilter,computeStats:computeStats,
-  statsHTML:statsHTML,openStatsModal:openStatsModal,closeStatsModal:closeStatsModal};
+  setLaunchFilter:setLaunchFilter,takeLaunchFilter:takeLaunchFilter,
+  setContinue:setContinue,takeContinue:takeContinue,
+  computeStats:computeStats,scopeMatches:scopeMatches,statsHTML:statsHTML,
+  openStatsModal:openStatsModal,closeStatsModal:closeStatsModal};
 
 window.PTAuth=PTAuth;
 window.PTProgress=PTProgress;
