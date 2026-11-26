@@ -1,0 +1,491 @@
+/* Shared authentication, user management and cross-device progress sync.
+   Include this file (as a normal script) before a page's own inline script.
+   Pages can use:
+     PTAuth.init({ onUnlock(session), onLock() })
+     PTProgress.create({ testId, total, get(), set(state) })
+     PTProgress.counts()  -> { [test_id]: answeredCount }
+   All styling is injected here as #pt-auth-styles; no external CSS is required.
+   Sessions live only in localStorage. Usernames never go into the URL. */
+(function(){
+'use strict';
+
+var SUPABASE_URL='https://klwqlynfphckzelrvwbn.supabase.co';
+var ANON_KEY='sb_publishable_IQfBO2HpBPnWFx9NTb_-tA_-JGg0uKu';
+var K_USER='pt_session_user', K_ROLE='pt_session_role';
+var SAVED='Saved to cloud \u2713', SYNCING='Syncing...';
+var HELP='Need to sign up or forgot your password? Contact Big P.';
+var NOT_FOUND='Username not found. To sign up, contact Big P.';
+var WRONG_PASSWORD='Incorrect password. Need a reset? Contact Big P.';
+
+var mem={}, session=null, pendingUser=null, booted=false, gate=null, bar=null, adminModal=null, adminKeyHandler=null;
+var callbacks={unlock:[],lock:[]};
+
+function enc(s){return encodeURIComponent(String(s))}
+function norm(s){return String(s==null?'':s).trim().toLowerCase()}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function lsGet(k){try{var v=localStorage.getItem(k);return v==null?(mem[k]||null):v}catch(e){return mem[k]||null}}
+function lsSet(k,v){mem[k]=String(v);try{localStorage.setItem(k,String(v))}catch(e){}}
+function lsDel(k){delete mem[k];try{localStorage.removeItem(k)}catch(e){}}
+function getSession(){var u=lsGet(K_USER),r=lsGet(K_ROLE);return u&&r?{username:u,role:r}:null}
+function saveSession(u,r){lsSet(K_USER,u);lsSet(K_ROLE,r||'student');session={username:u,role:r||'student'}}
+function clearSession(){lsDel(K_USER);lsDel(K_ROLE);session=null}
+
+/* ---------- self-contained styling ---------- */
+
+function injectCSS(){
+  if(document.getElementById('pt-auth-styles'))return;
+  var css=[
+    '/* page lock: nothing behind the gate can be seen or clicked */',
+    'html body.pt-auth-locked{overflow:hidden!important;height:100vh}',
+    'html body.pt-auth-locked main,html body.pt-auth-locked #app,html body.pt-auth-locked [data-pt-auth-page]{visibility:hidden!important;pointer-events:none!important}',
+    'html body.pt-auth-locked #tb,html body.pt-auth-locked #tp,html body.pt-auth-locked #zm,html body.pt-auth-locked #zo{display:none!important;visibility:hidden!important}',
+    '',
+    '/* full-screen login gate */',
+    'html body #pt-auth-gate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0b0f19;padding:16px;overflow:auto;color:#f1f5f9;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}',
+    'html body #pt-auth-gate *,html body #pt-auth-userbar *,html body #pt-auth-admin-modal *{box-sizing:border-box}',
+    'html body #pt-auth-gate .pt-auth-card{max-width:400px;width:100%;background:#131a2a;border:1px solid #263148;border-radius:14px;padding:28px;box-shadow:0 20px 50px rgba(0,0,0,0.6)}',
+    'html body #pt-auth-gate .pt-auth-mark{width:42px;height:42px;border-radius:10px;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.5px;margin-bottom:16px}',
+    'html body #pt-auth-gate h2{margin:0 0 6px;font-size:1.35rem;color:#f8fafc}',
+    'html body #pt-auth-gate .pt-auth-lead{color:#94a3b8;margin:0 0 18px;font-size:.92rem}',
+    'html body #pt-auth-gate .pt-auth-chip{display:inline-block;background:#1e293b;border:1px solid #334155;border-radius:999px;padding:4px 11px;color:#bfdbfe;font-size:.8rem;font-weight:700;margin-bottom:16px}',
+    'html body #pt-auth-gate label.pt-auth-label{display:block;margin:0 0 6px;color:#cbd5e1;font-size:.85rem;font-weight:600}',
+    'html body #pt-auth-gate input.pt-auth-input{width:100%;padding:11px 14px;border-radius:8px;background:#0b0f19;border:1px solid #2d3a54;color:#f1f5f9;font:inherit;margin:0 0 14px;display:block}',
+    'html body #pt-auth-gate input.pt-auth-input::placeholder{color:#64748b}',
+    'html body #pt-auth-gate input.pt-auth-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.22)}',
+    'html body #pt-auth-gate button.pt-auth-primary{width:100%;padding:11px 16px;border-radius:8px;background:#3b82f6;color:#fff;font-weight:600;cursor:pointer;border:1px solid #3b82f6;text-align:center;font-family:inherit;font-size:1rem}',
+    'html body #pt-auth-gate button.pt-auth-primary:hover{background:#2563eb;border-color:#2563eb}',
+    'html body #pt-auth-gate button.pt-auth-primary:disabled{opacity:.6;cursor:wait}',
+    'html body #pt-auth-gate button.pt-auth-back{display:block;margin:12px auto 0;background:none;border:0;padding:4px;color:#93c5fd;font-size:.85rem;cursor:pointer;text-align:center;font-family:inherit}',
+    'html body #pt-auth-gate button.pt-auth-back:hover{color:#bfdbfe;text-decoration:underline}',
+    'html body #pt-auth-gate .pt-auth-error:empty{display:none}',
+    'html body #pt-auth-gate .pt-auth-error:not(:empty){background:#3b1520;border:1px solid #7f1d2e;color:#fecaca;border-radius:8px;padding:10px 12px;margin:0 0 14px;font-size:.88rem}',
+    'html body #pt-auth-gate .pt-auth-help{border-top:1px solid #263148;margin:20px 0 0;padding-top:14px;color:#94a3b8;font-size:.82rem;text-align:center;line-height:1.45}',
+    'html body #pt-auth-gate .pt-auth-loading{display:flex;align-items:center;justify-content:center;gap:10px;color:#94a3b8;min-height:60px}',
+    'html body #pt-auth-gate .pt-auth-spinner{width:20px;height:20px;border:2px solid #2d3a54;border-top-color:#3b82f6;border-radius:50%;animation:pt-auth-spin .8s linear infinite}',
+    '@keyframes pt-auth-spin{to{transform:rotate(360deg)}}',
+    '',
+    '/* logged-in top bar */',
+    'html body #pt-auth-userbar{display:none;position:sticky;top:0;z-index:9000;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:#131a2a;border-bottom:1px solid #263148;color:#e2e8f0;font-size:.82rem;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.22)}',
+    'html body #pt-auth-userbar.pt-auth-on{display:flex}',
+    'html body #pt-auth-userbar [hidden]{display:none!important}',
+    'html body #pt-auth-userbar .pt-auth-brand{font-weight:800;color:#cbd5e1;white-space:nowrap}',
+    'html body #pt-auth-userbar .pt-auth-spacer{flex:1 1 auto}',
+    'html body #pt-auth-userbar .pt-auth-sync{padding:5px 10px;border-radius:999px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:#86efac;white-space:nowrap;font-weight:600}',
+    'html body #pt-auth-userbar .pt-auth-sync.pt-auth-warn{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#fca5a5}',
+    'html body #pt-auth-userbar .pt-auth-user-badge{padding:5px 10px;border-radius:999px;background:#1e293b;border:1px solid #334155;color:#e2e8f0;font-weight:700;white-space:nowrap}',
+    'html body #pt-auth-userbar button.pt-auth-btn{padding:6px 12px;border-radius:999px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;text-align:center;font-family:inherit}',
+    'html body #pt-auth-userbar button.pt-auth-btn:hover{border-color:#3b82f6;color:#fff;background:#25334a}',
+    '',
+    '/* in-test auth controls */',
+    'html body .pt-auth-act{flex-wrap:wrap}',
+    'html body .act button.pt-auth-flag{flex:0 0 auto;font-size:.85rem;padding:10px 12px;border-radius:8px;background:#1e293b;color:#cbd5e1;border:1px solid #334155;cursor:pointer}',
+    'html body .act button.pt-auth-flag.pt-auth-on{border-color:#3b82f6;color:#93c5fd;font-weight:700}',
+    'html body button.pt-auth-reset{display:inline-block;margin-top:14px;background:none;border:0;padding:0;color:#64748b;font-size:.8rem;text-decoration:underline;cursor:pointer;text-align:left}',
+    'html body button.pt-auth-reset:hover{color:#93c5fd}',
+    '',
+    '/* admin / user management modal */',
+    'html body #pt-auth-admin-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(11,15,25,.8);color:#f1f5f9;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-card{width:min(680px,100%);max-height:min(86vh,760px);overflow:auto;background:#131a2a;border:1px solid #263148;border-radius:14px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.6)}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-head{display:flex;align-items:center;justify-content:space-between;gap:12px}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-head h2{margin:0;font-size:1.2rem;color:#f8fafc}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-sub{color:#94a3b8;margin:5px 0 12px;font-size:.85rem}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-msg{font-size:.85rem;color:#94a3b8;min-height:1.2em;margin:0 0 12px}',
+    'html body #pt-auth-admin-modal .pt-auth-admin-msg.pt-auth-bad{color:#fca5a5}',
+    'html body #pt-auth-admin-modal form.pt-auth-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}',
+    'html body #pt-auth-admin-modal input.pt-auth-input{flex:1 1 190px;min-width:0;padding:10px 12px;border-radius:8px;background:#0b0f19;border:1px solid #2d3a54;color:#f1f5f9;font:inherit}',
+    'html body #pt-auth-admin-modal input.pt-auth-input:focus{outline:none;border-color:#3b82f6}',
+    'html body #pt-auth-admin-modal .pt-auth-role-tag{font-size:.75rem;color:#94a3b8;border:1px solid #334155;border-radius:999px;padding:5px 10px;white-space:nowrap}',
+    'html body #pt-auth-admin-modal button.pt-auth-btn-small{padding:8px 12px;border-radius:8px;border:1px solid #3b82f6;background:#3b82f6;color:#fff;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}',
+    'html body #pt-auth-admin-modal button.pt-auth-btn-small:hover{background:#2563eb}',
+    'html body #pt-auth-admin-modal button[data-act]{padding:7px 10px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;font-size:.78rem;cursor:pointer;white-space:nowrap;font-family:inherit}',
+    'html body #pt-auth-admin-modal button[data-act]:hover{border-color:#3b82f6;color:#fff}',
+    'html body #pt-auth-admin-modal .pt-auth-table-wrap{overflow:auto;border:1px solid #263148;border-radius:10px}',
+    'html body #pt-auth-admin-modal table.pt-auth-table{width:100%;border-collapse:collapse;font-size:.82rem}',
+    'html body #pt-auth-admin-modal table.pt-auth-table th,html body #pt-auth-admin-modal table.pt-auth-table td{text-align:left;padding:9px 10px;border-bottom:1px solid #263148;white-space:nowrap;color:#cbd5e1}',
+    'html body #pt-auth-admin-modal table.pt-auth-table th{color:#94a3b8;font-weight:600;background:#0f1523}',
+    'html body #pt-auth-admin-modal table.pt-auth-table tr:last-child td{border-bottom:0}',
+    'html body #pt-auth-admin-modal table.pt-auth-table td.pt-auth-actions{display:flex;gap:6px}',
+    '@media (max-width:520px){html body #pt-auth-gate .pt-auth-card{padding:22px}html body #pt-auth-userbar{gap:8px;padding:8px 12px}html body #pt-auth-userbar .pt-auth-brand{display:none}html body #pt-auth-admin-modal .pt-auth-admin-card{padding:16px}}'
+  ];
+  var st=document.createElement('style');st.id='pt-auth-styles';st.textContent=css.join('\n');document.head.appendChild(st);
+}
+injectCSS();
+
+function lockPage(){
+  document.body.classList.add('pt-auth-locked');
+  document.body.style.overflow='hidden';
+}
+function unlockPage(){
+  document.body.classList.remove('pt-auth-locked');
+  if(document.body.style.overflow==='hidden')document.body.style.overflow='';
+}
+
+/* Thin Supabase PostgREST client: every request carries the publishable key. */
+async function sb(path,options){
+  options=options||{};
+  var headers={apikey:ANON_KEY,Authorization:'Bearer '+ANON_KEY,'Content-Type':'application/json'};
+  if(options.headers){Object.keys(options.headers).forEach(function(k){headers[k]=options.headers[k]})}
+  var res;
+  try{
+    res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{
+      method:options.method||'GET',headers:headers,
+      body:options.body==null?undefined:options.body
+    });
+  }catch(e){throw new Error('Network unavailable. Your answers are saved on this device.')}
+  if(!res.ok){
+    var detail='';
+    try{var j=await res.json();detail=j.message||j.details||j.hint||''}catch(e){}
+    throw new Error(detail||('Request failed ('+res.status+')'));
+  }
+  if(res.status===204||res.status===205)return null;
+  var text=await res.text();
+  if(!text)return null;
+  try{return JSON.parse(text)}catch(e){return null}
+}
+
+/* ---------- login gate ---------- */
+
+function ensureGate(){
+  if(gate)return gate;
+  lockPage();
+  gate=document.createElement('div');gate.id='pt-auth-gate';gate.className='pt-auth-gate';
+  document.body.appendChild(gate);
+  return gate;
+}
+function gateCard(inner){
+  ensureGate();
+  gate.innerHTML='<div class="pt-auth-card"><div class="pt-auth-mark">PT</div>'+inner+'<p class="pt-auth-help">'+HELP+'</p></div>';
+}
+function gateError(msg){var e=gate&&gate.querySelector('.pt-auth-error');if(e)e.textContent=msg||''}
+function gateBusy(btn,label){if(!btn)return;btn.disabled=true;btn.textContent=label||'Please wait\u2026'}
+function gateIdle(btn,label){if(!btn||!btn.isConnected)return;btn.disabled=false;btn.textContent=label}
+
+function renderGate(step,message){
+  lockPage();
+  if(step==='checking'){
+    gateCard('<h2>Checking your session\u2026</h2><div class="pt-auth-loading"><span class="pt-auth-spinner"></span><span>One moment</span></div>');
+    return;
+  }
+  if(step==='user'){
+    gateCard('<h2>Sign in to Practice Tests</h2><p class="pt-auth-lead">Your progress stays in sync across devices.</p>'+
+      '<p class="pt-auth-error"></p><form id="pt-auth-form"><label class="pt-auth-label" for="pt-auth-user">Username</label>'+
+      '<input class="pt-auth-input" id="pt-auth-user" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your username">'+
+      '<button class="pt-auth-primary" type="submit">Continue</button></form>');
+    if(message)gateError(message);
+    var u=gate.querySelector('#pt-auth-user');if(u)u.focus();
+    wireForm(handleUsername);
+    return;
+  }
+  if(step==='password'){
+    gateCard('<span class="pt-auth-chip">@'+esc(pendingUser?pendingUser.username:'')+'</span>'+
+      '<h2>Welcome back</h2><p class="pt-auth-lead">Enter your password to continue.</p>'+
+      '<p class="pt-auth-error"></p><form id="pt-auth-form"><label class="pt-auth-label" for="pt-auth-pass">Password</label>'+
+      '<input class="pt-auth-input" id="pt-auth-pass" type="password" autocomplete="current-password" placeholder="Your password">'+
+      '<button class="pt-auth-primary" type="submit">Log In</button><button class="pt-auth-back" type="button" data-back="1">\u2190 Use a different username</button></form>');
+    wireForm(handleLogin);wireBack();
+    var p=gate.querySelector('#pt-auth-pass');if(p)p.focus();
+    return;
+  }
+  /* create */
+  gateCard('<span class="pt-auth-chip">@'+esc(pendingUser?pendingUser.username:'')+'</span>'+
+    '<h2>Create Your Password</h2><p class="pt-auth-lead">First time here? Choose a password (at least 4 characters).</p>'+
+    '<p class="pt-auth-error"></p><form id="pt-auth-form"><label class="pt-auth-label" for="pt-auth-new">New Password</label>'+
+    '<input class="pt-auth-input" id="pt-auth-new" type="password" autocomplete="new-password" placeholder="At least 4 characters">'+
+    '<label class="pt-auth-label" for="pt-auth-confirm">Confirm Password</label>'+
+    '<input class="pt-auth-input" id="pt-auth-confirm" type="password" autocomplete="new-password" placeholder="Repeat your password">'+
+    '<button class="pt-auth-primary" type="submit">Save Password &amp; Enter</button>'+
+    '<button class="pt-auth-back" type="button" data-back="1">\u2190 Use a different username</button></form>');
+  wireForm(handleCreate);wireBack();
+  var n=gate.querySelector('#pt-auth-new');if(n)n.focus();
+}
+function wireBack(){
+  var b=gate.querySelector('[data-back]');
+  if(b)b.onclick=function(){pendingUser=null;renderGate('user')};
+}
+function wireForm(handler){
+  var form=gate.querySelector('#pt-auth-form');
+  if(!form)return;
+  form.onsubmit=async function(e){
+    e.preventDefault();
+    var btn=form.querySelector('.pt-auth-primary');
+    gateError('');gateBusy(btn);
+    try{await handler(form)}catch(err){gateError((err&&err.message)||'Something went wrong. Please try again.')}
+    finally{gateIdle(btn,btn&&btn.dataset.label?btn.dataset.label:(form.querySelector('#pt-auth-pass')?'Log In':form.querySelector('#pt-auth-new')?'Save Password & Enter':'Continue'))}
+  };
+}
+async function handleUsername(form){
+  var name=norm(form.querySelector('#pt-auth-user').value);
+  if(!name){gateError('Enter your username.');return}
+  var rows=await sb('app_users?username=eq.'+enc(name)+'&select=*');
+  if(!rows||!rows.length){gateError(NOT_FOUND);return}
+  pendingUser=rows[0];
+  renderGate(pendingUser.password?'password':'create');
+}
+async function handleLogin(form){
+  var pw=form.querySelector('#pt-auth-pass').value;
+  if(!pw){gateError('Enter your password.');return}
+  if(!pendingUser)return;
+  var rows=await sb('app_users?username=eq.'+enc(pendingUser.username)+'&select=username,role,password');
+  var row=rows&&rows[0];
+  if(!row){pendingUser=null;renderGate('user','Account not found. To sign up, contact Big P.');return}
+  if(!row.password){pendingUser=row;renderGate('create');return}
+  if(pw!==row.password){gateError(WRONG_PASSWORD);return}
+  saveSession(row.username,row.role);
+  unlock(session);
+}
+async function handleCreate(form){
+  var pw=form.querySelector('#pt-auth-new').value;
+  var confirm=form.querySelector('#pt-auth-confirm').value;
+  if(pw.length<4){gateError('Password must be at least 4 characters.');return}
+  if(pw!==confirm){gateError('Passwords do not match.');return}
+  if(!pendingUser)return;
+  await sb('app_users?username=eq.'+enc(pendingUser.username),{
+    method:'PATCH',body:JSON.stringify({password:pw}),headers:{'Prefer':'return=minimal'}
+  });
+  saveSession(pendingUser.username,pendingUser.role);
+  unlock(session);
+}
+
+/* ---------- logged-in user bar ---------- */
+
+function ensureBar(){
+  if(bar)return bar;
+  bar=document.createElement('div');bar.id='pt-auth-userbar';bar.className='pt-auth-userbar';
+  bar.innerHTML='<span class="pt-auth-brand">Grade 12 Practice</span><span class="pt-auth-spacer"></span>'+
+    '<span class="pt-auth-sync" id="pt-auth-sync"></span><span class="pt-auth-user-badge" id="pt-auth-user-badge"></span>'+
+    '<button type="button" class="pt-auth-btn" id="pt-auth-admin-btn" hidden>Admin / Users</button>'+
+    '<button type="button" class="pt-auth-btn" id="pt-auth-logout-btn">Log Out</button>';
+  document.body.insertBefore(bar,document.body.firstChild);
+  bar.querySelector('#pt-auth-admin-btn').onclick=openAdmin;
+  bar.querySelector('#pt-auth-logout-btn').onclick=lock;
+  setSync(SAVED);
+  return bar;
+}
+function setSync(text,warn){
+  ensureBar();
+  var el=bar.querySelector('#pt-auth-sync');
+  if(el){el.textContent=text;el.classList.toggle('pt-auth-warn',!!warn)}
+}
+function unlock(s){
+  session=s||getSession();
+  if(!session)return;
+  ensureBar();
+  bar.classList.add('pt-auth-on');
+  bar.querySelector('#pt-auth-user-badge').textContent='@'+session.username;
+  bar.querySelector('#pt-auth-admin-btn').hidden=!(session.role==='main'||session.role==='admin');
+  setSync(SAVED);
+  if(gate)gate.remove();
+  gate=null;
+  unlockPage();
+  callbacks.unlock.forEach(function(fn){try{fn(session)}catch(e){}});
+}
+function lock(){
+  clearSession();
+  if(adminModal)closeAdmin();
+  if(bar)bar.classList.remove('pt-auth-on');
+  renderGate('user');
+  callbacks.lock.forEach(function(fn){try{fn()}catch(e){}});
+}
+async function verifySession(s){
+  try{
+    var rows=await sb('app_users?username=eq.'+enc(s.username)+'&select=username,role');
+    if(!rows||!rows.length)return null;
+    return {username:rows[0].username,role:rows[0].role||'student'};
+  }catch(e){return s} /* offline: keep the locally stored session */
+}
+function boot(){
+  if(booted)return;
+  booted=true;
+  ensureBar();
+  var s=getSession();
+  if(!s){renderGate('user');return}
+  renderGate('checking');
+  verifySession(s).then(function(valid){
+    if(valid&&valid.username){session=valid;lsSet(K_ROLE,valid.role||'student');unlock(valid)}
+    else{clearSession();renderGate('user')}
+  });
+}
+
+/* ---------- admin / user management ---------- */
+
+function adminMsg(text,bad){
+  if(!adminModal)return;
+  var el=adminModal.querySelector('#pt-auth-admin-msg');
+  if(el){el.textContent=text||'';el.classList.toggle('pt-auth-bad',!!bad)}
+}
+async function refreshAdmin(){
+  if(!adminModal)return;
+  var body=adminModal.querySelector('#pt-auth-admin-rows');
+  try{
+    var rows=await sb('app_users?select=username,role,password,created_at&order=created_at.asc');
+    if(!body||!body.isConnected)return;
+    body.innerHTML=(rows||[]).map(function(r){
+      return '<tr><td><b>@'+esc(r.username)+'</b></td><td>'+esc(r.role||'student')+'</td>'+
+        '<td>'+(r.password?'Set':'Not set')+'</td><td>'+esc((r.created_at||'').slice(0,10))+'</td>'+
+        '<td class="pt-auth-actions"><button type="button" data-act="reset" data-user="'+esc(r.username)+'">Reset Password</button>'+
+        (r.role==='student'?'<button type="button" data-act="delete" data-user="'+esc(r.username)+'">Delete User</button>':'')+'</td></tr>';
+    }).join('');
+    if(!rows||!rows.length)body.innerHTML='<tr><td colspan="5">No users yet.</td></tr>';
+  }catch(e){adminMsg((e&&e.message)||'Could not load users.',true)}
+}
+function closeAdmin(){
+  if(adminKeyHandler){document.removeEventListener('keydown',adminKeyHandler);adminKeyHandler=null}
+  if(adminModal)adminModal.remove();
+  adminModal=null;
+}
+function openAdmin(){
+  if(!session||!(session.role==='main'||session.role==='admin'))return;
+  if(adminModal)return;
+  adminModal=document.createElement('div');adminModal.className='pt-auth-admin-modal';adminModal.id='pt-auth-admin-modal';
+  adminModal.innerHTML='<div class="pt-auth-admin-card" role="dialog" aria-modal="true" aria-label="User management">'+
+    '<div class="pt-auth-admin-head"><h2>User Management</h2><button type="button" data-act="close" aria-label="Close">\u2715</button></div>'+
+    '<p class="pt-auth-admin-sub">Reset passwords, add students and remove accounts.</p>'+
+    '<p class="pt-auth-admin-msg" id="pt-auth-admin-msg"></p>'+
+    '<form class="pt-auth-add" id="pt-auth-add-form"><input class="pt-auth-input" id="pt-auth-new-user" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="New username">'+
+    '<span class="pt-auth-role-tag">role: student</span><button class="pt-auth-btn-small" type="submit">Add New User</button></form>'+
+    '<div class="pt-auth-table-wrap"><table class="pt-auth-table"><thead><tr><th>User</th><th>Role</th><th>Password</th><th>Joined</th><th>Actions</th></tr></thead>'+
+    '<tbody id="pt-auth-admin-rows"><tr><td colspan="5">Loading\u2026</td></tr></tbody></table></div></div>';
+  document.body.appendChild(adminModal);
+  adminModal.addEventListener('click',function(e){if(e.target===adminModal)closeAdmin()});
+  adminKeyHandler=function(e){if(e.key==='Escape')closeAdmin()};
+  document.addEventListener('keydown',adminKeyHandler);
+  adminModal.querySelector('#pt-auth-add-form').onsubmit=async function(e){
+    e.preventDefault();
+    var input=adminModal.querySelector('#pt-auth-new-user');
+    var u=norm(input.value);
+    if(!u){adminMsg('Enter a username.',true);return}
+    try{
+      await sb('app_users',{method:'POST',headers:{'Prefer':'return=minimal'},
+        body:JSON.stringify({username:u,role:'student',password:null,created_at:new Date().toISOString()})});
+      input.value='';adminMsg('Added @'+u+'. They can set a password on their first login.');
+      await refreshAdmin();
+    }catch(err){adminMsg((err&&err.message)||'Could not add user.',true)}
+  };
+  adminModal.addEventListener('click',async function(e){
+    var b=e.target.closest('[data-act]');if(!b)return;
+    var act=b.dataset.act,u=b.dataset.user;
+    if(act==='close'){closeAdmin();return}
+    if(!u||!adminModal)return;
+    try{
+      if(act==='reset'){
+        await sb('app_users?username=eq.'+enc(u),{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({password:null})});
+        adminMsg('Password reset for @'+u+'. They will create a new password next login.');
+        await refreshAdmin();
+      }else if(act==='delete'){
+        if(b.dataset.confirmed!=='1'){b.dataset.confirmed='1';b.textContent='Confirm delete?';return}
+        await sb('app_users?username=eq.'+enc(u),{method:'DELETE',headers:{'Prefer':'return=minimal'}});
+        adminMsg('Deleted @'+u+'.');
+        await refreshAdmin();
+      }
+    }catch(err){adminMsg((err&&err.message)||'Action failed.',true)}
+  });
+  refreshAdmin();
+}
+
+/* ---------- progress sync ---------- */
+
+function pKey(user,testId){return 'pt_progress_'+user+'_'+testId}
+function pRead(user,testId){
+  var k=pKey(user,testId);
+  try{var raw=localStorage.getItem(k);if(raw)return JSON.parse(raw)}catch(e){}
+  try{return mem[k]?JSON.parse(mem[k]):null}catch(e){return null}
+}
+function pWrite(user,testId,val){
+  var k=pKey(user,testId),raw=JSON.stringify(val);
+  mem[k]=raw;
+  try{localStorage.setItem(k,raw)}catch(e){}
+}
+function asMap(v){
+  if(!v)return {};
+  if(Array.isArray(v)){var o={};v.forEach(function(x,i){o[i]=x});return o}
+  return typeof v==='object'?v:{};
+}
+function countAnswers(v){
+  if(!v)return 0;
+  if(Array.isArray(v))return v.length;
+  return Object.keys(v).length;
+}
+function currentUser(){return session?session.username:''}
+
+function createProgress(cfg){
+  var testId=cfg.testId,timer=null;
+  function snapshot(){
+    var s=cfg.get()||{};
+    return {answers:asMap(s.answers),flags:asMap(s.flags)};
+  }
+  function persist(){
+    var s=snapshot();
+    pWrite(currentUser(),testId,{answers:s.answers,flags:s.flags,updated_at:new Date().toISOString()});
+  }
+  function restoreLocal(){
+    var raw=pRead(currentUser(),testId)||{};
+    cfg.set({answers:asMap(raw.answers),flags:asMap(raw.flags)});
+  }
+  async function loadCloud(){
+    if(!currentUser())return;
+    setSync(SAVED);
+    try{
+      var rows=await sb('user_progress?username=eq.'+enc(currentUser())+'&test_id=eq.'+enc(testId)+'&select=*');
+      if(rows&&rows.length){
+        cfg.set({answers:asMap(rows[0].answers),flags:asMap(rows[0].flags)});
+        persist();
+      }
+      setSync(SAVED);
+    }catch(e){setSync('Offline \u2014 saved locally',true)}
+  }
+  async function push(){
+    if(!currentUser())return;
+    var s=snapshot();
+    try{
+      await sb('user_progress',{
+        method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({username:currentUser(),test_id:testId,answers:s.answers,flags:s.flags,updated_at:new Date().toISOString()})
+      });
+      setSync(SAVED);
+    }catch(e){setSync('Offline \u2014 saved locally',true)}
+  }
+  function changed(){
+    persist();
+    setSync(SYNCING);
+    if(timer)clearTimeout(timer);
+    timer=setTimeout(function(){timer=null;push()},600);
+  }
+  function reset(){
+    cfg.set({answers:{},flags:{}});
+    changed();
+  }
+  return {restoreLocal:restoreLocal,loadCloud:loadCloud,changed:changed,push:push,reset:reset,
+    answers:function(){return snapshot().answers},flags:function(){return snapshot().flags},
+    count:function(){return countAnswers(snapshot().answers)}};
+}
+async function counts(){
+  if(!currentUser())return {};
+  try{
+    var rows=await sb('user_progress?username=eq.'+enc(currentUser())+'&select=test_id,answers,updated_at');
+    var out={};
+    (rows||[]).forEach(function(r){out[r.test_id]=countAnswers(r.answers)});
+    return out;
+  }catch(e){return {}}
+}
+
+var PTAuth={
+  init:function(opts){
+    opts=opts||{};
+    var wasBooted=booted;
+    if(typeof opts.onUnlock==='function')callbacks.unlock.push(opts.onUnlock);
+    if(typeof opts.onLock==='function')callbacks.lock.push(opts.onLock);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+    else boot();
+    if(wasBooted&&session&&opts.onUnlock){try{opts.onUnlock(session)}catch(e){}}
+    return PTAuth;
+  },
+  session:function(){return session?{username:session.username,role:session.role}:null},
+  setSync:setSync,
+  lock:lock,
+  api:sb
+};
+var PTProgress={create:createProgress,counts:counts,countAnswers:countAnswers};
+
+window.PTAuth=PTAuth;
+window.PTProgress=PTProgress;
+})();

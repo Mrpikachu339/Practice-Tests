@@ -18,6 +18,7 @@ a.t:hover{border-color:var(--pri)}
 a.t b{font-size:1.1rem}
 a.t span{display:block;color:var(--mut);margin-top:4px;font-size:.92rem}
 a.t i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-top:8px}
+a.t i.pt-count{color:var(--mut);font-weight:600}
 .soon{border-style:dashed;color:var(--mut);opacity:.7}
 </style>
 </head>
@@ -27,17 +28,35 @@ a.t i{display:block;color:var(--pri);font-style:normal;font-weight:600;margin-to
 <p class="sub">Pick a subject and a test to start.</p>
 <div class="grid" id="g"></div>
 </main>
+<script src="auth.js"></script>
 <script>
 // To add a test: make a new test page (keep the tools.js script tag in it), then add one line here.
 const TESTS=[
- {title:'Physics 12 — Static Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'physics-equilibrium-test.html'},
- {title:'Biology 12 — Digestion, Circulation & Respiration Practice Test',desc:'Digestion, Circulation & Respiration • 180 Questions',href:'biology-12-digestion-circulation-respiration-test.html'}
+ {title:'Physics 12 — Static Equilibrium Practice Test',desc:'33 multiple choice and 11 written questions. Calculator, formula sheet and drawing pad included.',href:'physics-equilibrium-test.html',testId:'physics-equilibrium',total:44},
+ {title:'Biology 12 — Digestion, Circulation & Respiration Practice Test',desc:'Digestion, Circulation & Respiration • 180 Questions',href:'biology-12-digestion-circulation-respiration-test.html',testId:'biology-12-digestion-circulation-respiration',total:180}
 ];
 const g=document.getElementById('g');
-TESTS.forEach(t=>{const a=document.createElement('a');a.className='t';a.href=t.href;
+TESTS.forEach(t=>{
+ const a=document.createElement('a');a.className='t';a.href=t.href;
  a.innerHTML='<b></b><span></span><i>Start Practice Test \u2192</i>';
- a.querySelector('b').textContent=t.title;a.querySelector('span').textContent=t.desc;g.appendChild(a)});
+ a.querySelector('b').textContent=t.title;
+ a.querySelector('span').textContent=t.desc;
+ g.appendChild(a);t.el=a;
+});
 const s=document.createElement('div');s.className='t soon';s.style.cssText='padding:16px;border:1px dashed var(--line);border-radius:14px';s.textContent='More tests coming soon';g.appendChild(s);
+
+function refreshCounts(){
+  TESTS.forEach(t=>{if(t.el)t.el.querySelector('i').textContent='Start Practice Test \u2192';t.el&&t.el.querySelector('i').classList.remove('pt-count')});
+  PTProgress.counts().then(counts=>{
+    TESTS.forEach(t=>{
+      if(!t.testId||!t.el||!Object.prototype.hasOwnProperty.call(counts,t.testId))return;
+      const label=t.el.querySelector('i');
+      label.textContent=counts[t.testId]+' / '+t.total+' answered';
+      label.classList.add('pt-count');
+    });
+  });
+}
+PTAuth.init({onUnlock:refreshCounts,onLock:refreshCounts});
 </script>
 </body>
 </html>
