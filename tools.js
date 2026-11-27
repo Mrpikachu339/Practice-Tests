@@ -267,6 +267,22 @@ function zoomImg(src){
  o.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();set(z+(e.deltaY<0?15:-15))},{passive:false});
  fit();
 }
+/* Polished glass styling and smooth motion for the zoom / tools overlays. */
+var ptToolsStyle=document.createElement('style');ptToolsStyle.id='pt-tools-style';
+ptToolsStyle.textContent=[
+ 'html body #zo{background:rgba(7,11,20,.92)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);animation:ptZoomIn .35s cubic-bezier(.16,1,.3,1) both}',
+ '@keyframes ptZoomIn{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:scale(1)}}',
+ 'html body #zo .zbar{background:rgba(15,23,42,.86)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-bottom:1px solid rgba(148,163,184,.14)!important;box-shadow:0 12px 30px rgba(2,6,23,.5)!important;border-radius:14px;margin:0 auto 10px;max-width:min(760px,95vw)}',
+ 'html body #zo .zbar button{border-radius:10px;border-color:rgba(148,163,184,.2);background:rgba(30,41,59,.75);color:#e2e8f0;transition:transform .25s cubic-bezier(.16,1,.3,1),border-color .25s,box-shadow .25s}',
+ 'html body #zo .zbar button:hover{border-color:rgba(56,189,248,.5);box-shadow:0 0 0 1px rgba(56,189,248,.14)}',
+ 'html body #zo .zbar button:active{transform:scale(.98)}',
+ 'html body #zo .zw img{border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.55)}',
+ 'html body #tp{background:rgba(15,23,42,.82)!important;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-color:rgba(148,163,184,.16)!important;box-shadow:0 22px 60px rgba(2,6,23,.6)}',
+ 'html body #tb{background:linear-gradient(135deg,#4f46e5,#0ea5e9)!important;transition:transform .3s cubic-bezier(.16,1,.3,1),box-shadow .3s}',
+ 'html body #tb:active{transform:scale(.98)}',
+ '@media (prefers-reduced-motion:reduce){html body #zo,html body #tp,html body #tb{animation-duration:.01ms!important;transition-duration:.01ms!important}}'
+].join('\n');
+document.head.appendChild(ptToolsStyle);
 window.zoomImg=zoomImg;
 window.openOriginalFormulaSheet=function(){openFormulaSheet(FS)};
 })();
